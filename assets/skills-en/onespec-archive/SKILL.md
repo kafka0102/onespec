@@ -61,6 +61,92 @@ Supported closeout paths:
 
 Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Merge, PR, and deletion are consequential actions and require an explicit user choice.
 
+## 2.1 Closeout Capability Probe
+
+Before showing the `PR` / `MR` option, probe the hosting platform, local CLI availability, and auth state. Do not wait until after the user confirms and then fail late.
+
+Recommended order:
+
+1. Parse the default remote with `git remote get-url origin`.
+2. Determine the hosting platform from the host:
+   - `github.com` or GitHub Enterprise: treat as GitHub.
+   - `gitlab.com`, a self-hosted GitLab domain, or a project that explicitly declares GitLab: treat as GitLab.
+   - unknown host: treat as `unknown`; use `PR/MR` wording, but do not promise automatic creation.
+3. Check local capability:
+   - GitHub: `command -v gh`, then `gh auth status --hostname <host>`.
+   - GitLab: `command -v glab`, then `glab auth status --hostname <host>`.
+4. Record the result:
+   - `review_request_supported=true|false`
+   - `review_request_tool=gh|glab|none`
+   - `review_request_error=<specific reason>`
+
+The default GitLab checks must include at least:
+
+- the `origin` remote resolves to a GitLab host
+- `glab` exists locally
+- `glab` is authenticated for that host
+
+If the user tries to execute `create PR` / `create MR` and the probe failed, stop immediately with an explicit error:
+
+- GitHub: `Cannot create PR: gh is missing or not authenticated for <host>.`
+- GitLab: `Cannot create MR: glab is missing or not authenticated for <host>.`
+- Unknown: `Cannot auto-create PR/MR: could not determine the hosting platform. Confirm the remote or create it manually.`
+
+When capability is missing, do not pretend the request was completed. Either fail explicitly or switch to a manual instruction path.
+
+## 2.2 Superpowers Worktree Priority
+
+If `origin_workspace_mode=worktree`, or the current path is a temporary implementation worktree created during execution, make the "return to the original branch/workspace" consequence explicit before any destructive action.
+
+The agent must tell the user:
+
+- implementation currently lives in a temporary worktree
+- the original branch is `origin_branch`
+- the original workspace is `origin_workspace_path`
+- whether local temporary branch/worktree cleanup will happen after closeout
+
+Default recommended order:
+
+1. finish review inside the temporary worktree
+2. after user confirmation, choose either "submit review request" or "merge locally"
+3. if the user chooses local merge: merge back to `origin_branch` or the project target branch, re-test, then delete the local temporary branch / worktree
+4. if the user chooses `PR` / `MR`:
+   - push the current implementation branch first
+   - after the `PR` / `MR` is created successfully, delete the local temporary branch / worktree
+   - do not delete the remote branch; it still carries the review
+5. if the user chooses preserve, keep the worktree and do not delete it
+
+By default, "delete branch" here means only the local temporary branch. Never delete the remote review branch unless the user explicitly requests it.
+
+## 2.3 Multi-Select Closeout Combinations
+
+Do not model closeout as a pure single-choice menu anymore. At minimum, make these three actions combinable:
+
+- `submit PR/MR`
+- `merge branch`
+- `run archive`
+
+Also keep one explicit no-op path, for example:
+
+- `continue review / do not close out yet`
+
+Recommended validation rules:
+
+- `{submit PR/MR}`: valid. Use when code should go through review first and should not be archived yet.
+- `{merge branch}`: valid. Use when code should be merged locally now, but not archived by default.
+- `{merge branch, run archive}`: valid. This is also the default recommended combination once code is truly on the target branch.
+- `{submit PR/MR, run archive}`: invalid by default. Code is not truly merged into the target branch yet, so archive must wait.
+- `{submit PR/MR, merge branch}`: invalid by default. These represent different integration paths, so require the user to choose one unless the project explicitly defines a combined flow.
+- `{}`: valid. This means finish the current review round without integration or archive; state may move to `done`, with a note that archive can happen later.
+
+If the user selects an invalid combination, explain the conflict explicitly. Do not guess the execution order on the user's behalf.
+
+Default recommended combinations:
+
+- if currently in a Superpowers temporary worktree and the repo is GitHub / GitLab: recommend `{submit PR/MR}`, and explain that local temporary branch / worktree cleanup will happen after creation while the remote review branch is kept
+- if not in a temporary worktree and the user explicitly wants local integration now: recommend `{merge branch, run archive}`
+- if the user wants to stop here without integrating yet: recommend `{}`, and explain that archive can be run later after merge
+
 The user-facing closeout menu should include at least:
 
 1. continue reviewing on the current implementation branch and do not close out yet

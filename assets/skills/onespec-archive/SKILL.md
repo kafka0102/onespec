@@ -61,6 +61,92 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 不要默认自动合并 worktree 到 `main`，也不要默认删除 worktree。合并、PR、删除都是有后果的操作，必须来自用户选择。
 
+## 2.1 收尾前能力探测
+
+在展示 `PR` / `MR` 选项前，先探测仓库类型、本地命令与认证状态，而不是等用户确认后才失败。
+
+推荐顺序：
+
+1. 用 `git remote get-url origin` 解析默认 remote。
+2. 根据 host 判断仓库类型：
+   - `github.com` 或 GitHub Enterprise：按 GitHub 处理。
+   - `gitlab.com`、自建 GitLab 域名，或项目明确声明 GitLab：按 GitLab 处理。
+   - 无法判断：视为 `unknown`，展示文案用 `PR/MR`，但不要承诺可自动创建。
+3. 检查本地能力：
+   - GitHub：`command -v gh`，随后 `gh auth status --hostname <host>`。
+   - GitLab：`command -v glab`，随后 `glab auth status --hostname <host>`。
+4. 记录能力结果：
+   - `review_request_supported=true|false`
+   - `review_request_tool=gh|glab|none`
+   - `review_request_error=<具体原因>`
+
+GitLab 默认检查项必须至少包含：
+
+- `origin` remote 可解析到 GitLab host
+- 本地存在 `glab`
+- `glab` 已对该 host 完成认证
+
+如果用户尝试执行 `创建 PR` / `创建 MR`，但能力探测失败，必须立即报错并停止该操作，推荐提示：
+
+- GitHub：`无法创建 PR：未检测到 gh，或 gh 未登录到 <host>。`
+- GitLab：`无法创建 MR：未检测到 glab，或 glab 未登录到 <host>。`
+- Unknown：`无法自动创建 PR/MR：未能判断仓库托管平台，请先确认 remote 或手动创建。`
+
+不要在能力不足时退化成“假装已经创建完成”；只能明确失败，或改为提示用户手动处理。
+
+## 2.2 Superpowers Worktree 优先规则
+
+如果 `origin_workspace_mode=worktree`，或当前路径是实现期新建的临时 worktree，收尾时必须把“回收到原始分支/工作区”的动作提到最前面说明。
+
+必须显式告诉用户：
+
+- 当前实现位于临时 worktree
+- 原始分支是 `origin_branch`
+- 原始工作区是 `origin_workspace_path`
+- 收尾后是否会删除本地临时 branch 与 worktree
+
+默认推荐顺序：
+
+1. 先在临时 worktree 完成 review。
+2. 用户确认后，选择“提交评审单”或“本地合并”。
+3. 如果选择本地合并：合并回 `origin_branch` 或项目目标分支，测试通过后删除本地临时 branch / worktree。
+4. 如果选择 `PR` / `MR`：
+   - 先 push 当前实现分支。
+   - 成功创建 `PR` / `MR` 后，删除本地临时 branch / worktree。
+   - 不要删除远端分支；远端分支仍需承载 review。
+5. 如果用户选择保留，则保留 worktree，不做删除。
+
+这里的“删除分支”默认只指本地临时分支；除非用户明确要求，否则不要删除远端 review 分支。
+
+## 2.3 多选收尾组合
+
+收尾选项不要再只做单选。至少把以下三个动作设计成可多选组合：
+
+- `提交 PR/MR`
+- `合并分支`
+- `执行归档`
+
+同时保留一个显式的“暂不处理”路径，例如：
+
+- `继续评审 / 暂不收尾`
+
+推荐的组合校验逻辑：
+
+- `{提交 PR/MR}`：合法。适用于先走代码评审，不立即归档。
+- `{合并分支}`：合法。适用于本地直接合并，但默认不归档。
+- `{合并分支, 执行归档}`：合法，也是“代码已真正落到目标分支后”的默认推荐组合。
+- `{提交 PR/MR, 执行归档}`：默认不合法。原因是代码尚未真正合并到目标分支，不能直接 archive。
+- `{提交 PR/MR, 合并分支}`：默认不合法。两者代表不同集成路径，除非项目另有明确流程，否则必须要求用户二选一。
+- `{}`：合法，表示这次仅结束 review，不做集成与归档；状态可置为 `done`，并提示之后仍可归档。
+
+如果用户勾选了非法组合，必须明确指出冲突原因，不要替用户猜测执行顺序。
+
+默认推荐组合：
+
+- 当前在 Superpowers 临时 worktree，且仓库是 GitHub / GitLab：推荐 `{提交 PR/MR}`，并明确“创建完成后会删除本地临时 branch / worktree，保留远端分支供 review”。
+- 当前不在临时 worktree，且用户明确要本地落地：推荐 `{合并分支, 执行归档}`。
+- 用户只想结束当前轮操作、不立即集成：推荐 `{}`，并提示“稍后如代码完成合并，可再执行归档”。
+
 推荐向用户展示的收尾选项至少包含：
 
 1. 继续在当前实现分支上 review，暂不收尾

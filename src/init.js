@@ -56,6 +56,7 @@ async function makeBundledScriptsExecutable(skillPath) {
   await chmodExecutable(path.join(scriptsDir, 'onespec-state.sh'));
   await chmodExecutable(path.join(scriptsDir, 'onespec-handoff.sh'));
   await chmodExecutable(path.join(scriptsDir, 'onespec-commit.sh'));
+  await chmodExecutable(path.join(scriptsDir, 'onespec-closeout.sh'));
 }
 
 async function createWorkingDirs(projectPath) {
