@@ -49,14 +49,31 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - `低歧义`：范围基本单一，方案基本清晰，验收标准大部分可从项目文档或现有 spec 推出。
 - `高歧义`：存在两个以上合理解释，或如果现在直接写 proposal 很可能会把猜测写进正式文档。
 
+完成 ambiguity scan 后，必须先给用户一个明确的分类输出，再进入下一步；不允许静默直接写 proposal、design、tasks 或 spec。
+
+用户可见输出至少包含：
+
+- 判定结果：`低歧义` 或 `高歧义`
+- 触发原因：1-3 条，说明为什么这样分类
+- 处理方式：接下来会做什么，以及是否需要用户先确认
+
+推荐输出模板：
+
+- `低歧义：当前需求属于低歧义，因为 <原因1>、<原因2>。处理方式：我将直接起草 OpenSpec proposal；如果过程中发现还缺一个关键前提，我只会先问一个简短问题，不会带着猜测写入正式文档。`
+- `高歧义：当前需求属于高歧义，因为 <原因1>、<原因2>。处理方式：我不会直接写 proposal；我会先进入 brainstorming，先和你确认 scope / 行为 / 技术方案中的关键分歧，再基于确认结果回填 OpenSpec artifacts。`
+
 低歧义流程：
 
-- 如果无需用户交互式 UI / 视觉确认，且没有必须进一步询问的问题，直接进入 OpenSpec proposal。
+- 先输出一次明确的低歧义结论和处理方式。
+- 如果无需用户交互式 UI / 视觉确认，且没有必须进一步询问的问题，再进入 OpenSpec proposal。
 - 如果仍有必须补齐的问题，只问一个简短问题，得到回答后重新执行 ambiguity scan。
+- 如果存在必须补齐的问题，在拿到回答前不要创建任何 OpenSpec artifact。
 - 对低歧义任务不要调用 brainstorming。
 
 高歧义流程：
 
+- 先输出一次明确的高歧义结论和处理方式。
+- 在完成这次说明前，不要创建任何 OpenSpec artifact。
 - 明确说明将先进入 `brainstorming`，再写 OpenSpec artifacts。
 - 使用 `brainstorming` 或 `superpowers:brainstorming`，一次只问一个问题，提出 2-3 个可行方案并说明 trade-off，形成已确认的设计文档。
 - Brainstorming 文档被用户确认后，以该文档、相关 `docs/**` 与相关 `openspec/specs/**` 为输入，回填 OpenSpec artifacts。不要重复追问已确认的问题。
