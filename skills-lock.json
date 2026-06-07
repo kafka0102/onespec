@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "skills": {
+    "onespec": {
+      "source": "kafka0102/onespec",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "assets/skills/onespec/SKILL.md",
+      "computedHash": "4b0ec34365976b9c978291f5cec9880bb37d4abab03b0f672ca276476b4c86e9"
+    },
+    "onespec-archive": {
+      "source": "kafka0102/onespec",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "assets/skills/onespec-archive/SKILL.md",
+      "computedHash": "53f4177ad0b24b583af462d7e83b20d709582e4887dd5bd22a3919f333601771"
+    },
+    "onespec-design": {
+      "source": "kafka0102/onespec",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "assets/skills/onespec-design/SKILL.md",
+      "computedHash": "a7785f61c3d4d3349820424d69365c61968a762e41591f714b754b9ccf253b9c"
+    },
+    "onespec-execute": {
+      "source": "kafka0102/onespec",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "assets/skills/onespec-execute/SKILL.md",
+      "computedHash": "e3ab875774c0ac2eedaa15b8095b64996452f51b1fb1ff70e36a4ae6aee79a08"
+    }
+  }
+}

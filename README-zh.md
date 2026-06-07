@@ -21,14 +21,16 @@ npx @kafka0102/onespec init
 直接从这个仓库安装英文 skill bundle：
 
 ```bash
-npx skills add kafka0102/onespec/tree/main/assets/skills-en -a codex -y
+npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills-en -a codex -y
 ```
 
 安装中文 skill bundle：
 
 ```bash
-npx skills add kafka0102/onespec/tree/main/assets/skills -a codex -y
+npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills -a codex -y
 ```
+
+`skills` CLI 不能正确解析 `owner/repo/tree/<ref>/...` 这种简写。请使用上面的完整 GitHub URL，或者改用带显式 ref 的简写，例如 `kafka0102/onespec/assets/skills#main`。
 
 ## 使用
 

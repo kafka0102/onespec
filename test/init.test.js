@@ -52,9 +52,18 @@ test('initProject installs bundled OneSpec skills and creates working directorie
     'scripts',
     'onespec-handoff.sh',
   );
+  const commitScriptPath = path.join(
+    projectPath,
+    '.codex',
+    'skills',
+    'onespec',
+    'scripts',
+    'onespec-commit.sh',
+  );
 
   assert.equal((await stat(stateScriptPath)).mode & 0o111, 0o111);
   assert.equal((await stat(handoffScriptPath)).mode & 0o111, 0o111);
+  assert.equal((await stat(commitScriptPath)).mode & 0o111, 0o111);
 
   await stat(path.join(projectPath, 'docs', 'superpowers', 'plans'));
   await stat(path.join(projectPath, 'docs', 'superpowers', 'specs'));

@@ -21,14 +21,16 @@ npx @kafka0102/onespec init
 Install the skill bundle directly from this repository:
 
 ```bash
-npx skills add kafka0102/onespec/tree/main/assets/skills-en -a codex -y
+npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills-en -a codex -y
 ```
 
 For the Chinese bundle:
 
 ```bash
-npx skills add kafka0102/onespec/tree/main/assets/skills -a codex -y
+npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills -a codex -y
 ```
+
+The `skills` CLI does not parse `owner/repo/tree/<ref>/...` shorthand correctly. Use the full GitHub URL above, or the shorthand form with an explicit ref such as `kafka0102/onespec/assets/skills#main`.
 
 ## Use
 

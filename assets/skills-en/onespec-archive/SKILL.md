@@ -65,6 +65,30 @@ The user-facing closeout menu should include at least:
 
 ## 3. Archive Rules
 
+Before archive, merge, PR/MR, or preserve closeout is finalized, always check whether there is still uncommitted code related to the current change:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_COMMIT" related-dirty <change-id>
+```
+
+- if the result is empty, continue with closeout
+- if the result is not empty, explicitly tell the user which change-related files are still uncommitted and pause archive
+- if the user wants to commit now, stage only the files related to this change:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_COMMIT" stage-related <change-id>
+```
+
+- prefer the repository's own Git commit policy for commit-message format, scope, and language; detect project docs and config first:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_COMMIT" detect-policy <change-id>
+```
+
+- if the project defines an explicit policy, follow it
+- if the project does not define a policy, fall back to general Conventional Commits: `<type>(<scope>): <short summary>`
+- only commit the intersection of `touched-files.txt` and current dirty files; never include unrelated changes
+
 - If code is merged into the target branch and the user chooses archive, run OpenSpec archive and set state to `archived`.
 - If the user does not archive, or implementation is still only in a PR/MR or preserved branch, set state to `done` and explain that archive can be run later.
 

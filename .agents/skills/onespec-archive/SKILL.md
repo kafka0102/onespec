@@ -65,30 +65,6 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 ## 3. 归档规则
 
-进入 archive、merge、PR/MR 或保留分支的最终收尾前，必须检查当前是否仍有“与本次 change 相关的未提交代码”：
-
-```bash
-"$ONESPEC_BASH" "$ONESPEC_COMMIT" related-dirty <change-id>
-```
-
-- 如果结果为空，继续后续收尾。
-- 如果结果非空，先向用户明确提示这些文件尚未提交，并暂停归档。
-- 若用户要求现在提交，只能 stage 本次 change 相关文件：
-
-```bash
-"$ONESPEC_BASH" "$ONESPEC_COMMIT" stage-related <change-id>
-```
-
-- 提交信息优先遵循项目自身指定的 Git 提交策略。先探测项目内文档和配置：
-
-```bash
-"$ONESPEC_BASH" "$ONESPEC_COMMIT" detect-policy <change-id>
-```
-
-- 如果项目里存在明确规范，按项目要求处理 commit message 的格式、scope 和语言。
-- 如果项目里没有明确规范，回退到通用 Conventional Commits：`<type>(<scope>): <简要描述>`。
-- 只能提交 `touched-files.txt` 与当前脏文件的交集，不允许把无关改动一并提交。
-
 - 如果代码已合并到目标分支且用户选择归档，执行 OpenSpec archive，并将状态设为 `archived`。
 - 如果用户不归档，或实现仍停留在 PR/MR/保留分支上，将状态设为 `done`，并提示之后可再运行归档。
 
