@@ -39,6 +39,11 @@ Let the user review the implementation. If they raise issues, continue editing a
 
 If the user confirms the result, still require an explicit closeout confirmation such as `continue`, `yes`, or `approve closeout` before touching branch/worktree state or archive.
 
+Do not make the user guess what to type next. When entering `onespec-archive`, provide copyable trigger words such as:
+
+- `enter closeout`: start the review-closeout choices
+- `continue review`: keep reviewing and do not close out yet
+
 Before offering closeout choices, explicitly tell the user:
 
 - the current branch name
@@ -63,6 +68,21 @@ The user-facing closeout menu should include at least:
 3. merge locally back to the target branch and delete the temporary branch / worktree
 4. preserve the current branch and worktree for later
 
+When presenting those choices, do not show only descriptions. Also give explicit input words, at minimum:
+
+- `continue review`
+- `create PR`
+- `merge locally`
+- `preserve branch`
+
+For consequential actions, ask for a second explicit confirmation before doing anything. Recommended confirmation words:
+
+- `confirm create PR`
+- `confirm merge locally`
+- `confirm preserve branch`
+
+If the hosting platform is GitLab, you may replace `create PR` / `confirm create PR` with `create MR` / `confirm create MR`. If the platform is unclear, keep the narrative wording as `PR/MR`, but still provide one concrete set of input words.
+
 ## 3. Archive Rules
 
 Before archive, merge, PR/MR, or preserve closeout is finalized, always check whether there is still uncommitted code related to the current change:
@@ -72,6 +92,7 @@ Before archive, merge, PR/MR, or preserve closeout is finalized, always check wh
 ```
 
 - if the result is empty, continue with closeout
+- if the result is empty, unrelated untracked directories must not block closeout; for example, `.superpowers/` that is not recorded in `touched-files.txt` can be called out as "not included in this change" and then ignored for closeout purposes
 - if the result is not empty, explicitly tell the user which change-related files are still uncommitted and pause archive
 - if the user wants to commit now, stage only the files related to this change:
 
@@ -91,6 +112,10 @@ Before archive, merge, PR/MR, or preserve closeout is finalized, always check wh
 
 - If code is merged into the target branch and the user chooses archive, run OpenSpec archive and set state to `archived`.
 - If the user does not archive, or implementation is still only in a PR/MR or preserved branch, set state to `done` and explain that archive can be run later.
+
+Once archive preconditions are satisfied and code is truly merged into the target branch, require one more explicit archive command before actually archiving. Recommended wording:
+
+- `run archive`
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase done

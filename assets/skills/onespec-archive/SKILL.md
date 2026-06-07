@@ -39,6 +39,11 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 若用户确认无问题，必须再获得明确收尾确认，例如 `continue`、`yes`、`批准收尾`。随后才处理分支/worktree与归档。
 
+不要让用户自己猜“下一步该输入什么”。进入 `onespec-archive` 时，必须给出可以直接照抄的入口词，例如：
+
+- `进入收尾`：开始 review-closeout 选择
+- `继续评审`：暂不收尾，继续看代码或补反馈
+
 进入收尾选择前，必须显式向用户汇报：
 
 - 当前分支名
@@ -63,6 +68,21 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 3. 本地合并回目标分支，并删除临时 branch / worktree
 4. 保留当前分支与 worktree，稍后再处理
 
+给用户展示这些选项时，不要只写描述；必须附上明确输入词，推荐至少包含：
+
+- `继续评审`
+- `创建 PR`
+- `本地合并`
+- `保留分支`
+
+对有后果的操作，执行前还要再要一次二次确认，推荐直接要求用户输入：
+
+- `确认创建 PR`
+- `确认本地合并`
+- `确认保留分支`
+
+如果仓库托管平台是 GitLab，可以把 `创建 PR` / `确认创建 PR` 替换为 `创建 MR` / `确认创建 MR`；无法判断平台时，正文里写 `PR/MR`，但仍要给出一组可直接输入的确认词。
+
 ## 3. 归档规则
 
 进入 archive、merge、PR/MR 或保留分支的最终收尾前，必须检查当前是否仍有“与本次 change 相关的未提交代码”：
@@ -72,6 +92,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 ```
 
 - 如果结果为空，继续后续收尾。
+- 如果结果为空，即使工作区里还有无关未跟踪目录，也不要阻塞收尾；例如未记录到 `touched-files.txt` 的 `.superpowers/` 可以明确说明“未纳入本次提交”，但不应视为本次 change 的阻塞项。
 - 如果结果非空，先向用户明确提示这些文件尚未提交，并暂停归档。
 - 若用户要求现在提交，只能 stage 本次 change 相关文件：
 
@@ -91,6 +112,10 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 - 如果代码已合并到目标分支且用户选择归档，执行 OpenSpec archive，并将状态设为 `archived`。
 - 如果用户不归档，或实现仍停留在 PR/MR/保留分支上，将状态设为 `done`，并提示之后可再运行归档。
+
+已经满足归档前置条件且代码确实已经合并到目标分支后，如需真的执行归档，必须再次要求用户给出明确指令，推荐使用：
+
+- `执行归档`
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase done

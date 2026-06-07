@@ -105,7 +105,8 @@ apply 前至少读取：
 
 - 告诉用户当前所在分支与工作区路径。
 - 如果当前分支或工作区路径不同于 `origin_branch` / `origin_workspace_path`，明确指出“当前实现位于临时分支或临时 worktree，请先在这里 review diff 与验证结果”。
-- 只汇报实现结果、验证结果、当前分支/worktree 状态，以及“下一步应进入 `onespec-archive` 做 review-closeout”。
+- 不要只停在“下一步应进入 `onespec-archive`”这种抽象提示，也不要只说“做 review-closeout”。必须同时告诉用户如何继续，例如：“如果评审通过并要进入收尾，请回复 `进入收尾` 或 `开始 review-closeout`；如果还要继续看代码，请回复 `继续评审`。”
+- 只汇报实现结果、验证结果、当前分支/worktree 状态，以及下一步进入 `onespec-archive` 的明确入口词。
 - 在用户完成 review 并明确要求收尾前，不允许擅自删除临时 worktree。
 
 汇报时覆盖：

@@ -93,3 +93,23 @@ test('onespec-handoff creates deterministic compact context and records hash', a
   assert.match(state, /handoff_context: openspec\/changes\/add-login\/.onespec\/handoff\/proposal-context.json/);
   assert.match(state, /handoff_hash: [a-f0-9]{64}/);
 });
+
+test('onespec-state review recovery tells the user how to enter closeout', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+
+  await mkdir(path.join(projectPath, 'openspec', 'changes', 'archive-login'), { recursive: true });
+  await execFileAsync('bash', [scriptPath, 'init', 'archive-login'], { cwd: projectPath });
+  await execFileAsync('bash', [scriptPath, 'set', 'archive-login', 'phase', 'review'], {
+    cwd: projectPath,
+  });
+
+  const { stdout: recovery } = await execFileAsync(
+    'bash',
+    [scriptPath, 'recover', 'archive-login'],
+    { cwd: projectPath },
+  );
+
+  assert.match(recovery, /进入 `onespec-archive`/);
+  assert.match(recovery, /输入 `进入收尾`/);
+});

@@ -105,7 +105,8 @@ After implementation and verification, the flow must pause. Do not continue dire
 
 - tell the user the current branch and current workspace path
 - if the current branch or workspace differs from `origin_branch` / `origin_workspace_path`, explicitly say that implementation now lives in a temporary branch or temporary worktree and the user should review there first
-- report only implementation results, verification results, current branch/worktree status, and that the next step is `onespec-archive` for review-closeout
+- do not stop at an abstract note like "the next step is `onespec-archive`" or just "do review-closeout". Also tell the user exactly how to continue, for example: "if review passed and you want to enter closeout, reply `enter closeout` or `start review-closeout`; if you want to keep reviewing, reply `continue review`"
+- report only implementation results, verification results, current branch/worktree status, and the explicit trigger words for entering `onespec-archive`
 - never delete a temporary worktree before the user finishes review and explicitly requests closeout
 
 Report must cover:

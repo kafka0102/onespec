@@ -35,3 +35,18 @@ The `skills` CLI does not parse `owner/repo/tree/<ref>/...` shorthand correctly.
 ## Use
 
 After installation, restart Codex and invoke the OneSpec skills in your task.
+
+## Release
+
+To publish from GitHub Actions:
+
+1. Add repository secret `NPM_TOKEN` with an npm automation token that can publish `@kafka0102/onespec`.
+2. Update `package.json` version.
+3. Create and push a matching tag such as `v0.1.1`.
+
+```bash
+git tag v0.1.1
+git push origin main --tags
+```
+
+The workflow at `.github/workflows/publish.yml` runs on `v*` tags, checks that the tag matches `package.json`, runs `npm test`, previews the published package, and then publishes to npm.

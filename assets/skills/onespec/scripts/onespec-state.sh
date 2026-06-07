@@ -159,7 +159,7 @@ cmd_recover() {
       echo "下一步: 继续未完成任务，然后更新 tasks.md"
       ;;
     review)
-      echo "下一步: 等待用户评审，并根据反馈修复或收尾"
+      echo "下一步: 等待用户评审；如评审通过并要进入收尾，请输入 \`进入收尾\` 进入 \`onespec-archive\`，否则继续反馈修改意见"
       ;;
     done|archived)
       echo "下一步: 没有剩余实现工作"

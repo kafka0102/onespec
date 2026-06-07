@@ -35,3 +35,18 @@ npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills -a c
 ## 使用
 
 安装后重启 Codex，然后在任务里调用 OneSpec skills 即可。
+
+## 发布
+
+如果要通过 GitHub Actions 发布到 npm：
+
+1. 在仓库 Secrets 中添加 `NPM_TOKEN`，它需要有发布 `@kafka0102/onespec` 的权限。
+2. 更新 `package.json` 里的版本号。
+3. 创建并推送对应版本标签，例如 `v0.1.1`。
+
+```bash
+git tag v0.1.1
+git push origin main --tags
+```
+
+`.github/workflows/publish.yml` 会在推送 `v*` 标签时触发，校验 tag 与 `package.json` 版本一致，执行 `npm test`，预览发布内容，然后发布到 npm。

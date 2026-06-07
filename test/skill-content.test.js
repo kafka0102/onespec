@@ -81,6 +81,8 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     '不允许实现结果与已批准 OpenSpec 范围静默漂移',
     '必须明确暂停',
     'review-closeout',
+    '进入收尾',
+    '不要只停在“下一步应进入 `onespec-archive`”',
     'openspec validate <change-id> --strict',
   ]) {
     expectIncludes(skill, expected);
@@ -93,6 +95,14 @@ test('onespec-archive documents review closeout and archive guardrails', async (
   for (const expected of [
     '用户评审',
     'continue',
+    '继续评审',
+    '创建 PR',
+    '本地合并',
+    '保留分支',
+    '确认创建 PR',
+    '确认本地合并',
+    '确认保留分支',
+    '执行归档',
     '当前分支名',
     'origin_branch',
     '临时实现分支或临时 worktree',
