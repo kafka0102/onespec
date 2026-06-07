@@ -1,0 +1,22 @@
+{
+  "name": "@local/onespec",
+  "version": "0.1.0",
+  "description": "Lightweight OpenSpec + Superpowers coding workflow skill installer",
+  "type": "module",
+  "bin": {
+    "onespec": "./bin/onespec.js"
+  },
+  "files": [
+    "assets",
+    "bin",
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:shell": "node --test test/*.shell.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
