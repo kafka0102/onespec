@@ -25,6 +25,16 @@ test('onespec-state initializes, updates, and recovers change state', async () =
   await execFileAsync('bash', [scriptPath, 'set', 'add-login', 'implementation_path', 'superpowers'], {
     cwd: projectPath,
   });
+  await execFileAsync('bash', [scriptPath, 'set', 'add-login', 'origin_branch', 'main'], {
+    cwd: projectPath,
+  });
+  await execFileAsync(
+    'bash',
+    [scriptPath, 'set', 'add-login', 'origin_workspace_path', '/tmp/project'],
+    {
+      cwd: projectPath,
+    },
+  );
 
   const { stdout: phase } = await execFileAsync(
     'bash',
@@ -41,12 +51,15 @@ test('onespec-state initializes, updates, and recovers change state', async () =
   assert.match(recovery, /change: add-login/);
   assert.match(recovery, /phase: proposal-ready/);
   assert.match(recovery, /implementation_path: superpowers/);
+  assert.match(recovery, /origin_branch: main/);
+  assert.match(recovery, /origin_workspace_path: \/tmp\/project/);
 
   const state = await readFile(
     path.join(projectPath, 'openspec', 'changes', 'add-login', '.onespec.yaml'),
     'utf8',
   );
   assert.match(state, /phase: proposal-ready/);
+  assert.match(state, /origin_branch: main/);
 });
 
 test('onespec-handoff creates deterministic compact context and records hash', async () => {

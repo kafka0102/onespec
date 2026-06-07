@@ -29,6 +29,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 相关 `openspec/specs/**`
 - 最新测试结果与 `openspec validate <change-id> --strict` 结果
 - 当前分支、worktree 和工作区状态
+- `origin_branch`、`origin_workspace_path`、`origin_workspace_mode`
 
 如果状态尚未到 `review`，先说明缺少什么：未实现、未验证、未回填 `tasks.md`，或 proposal 尚未批准。
 
@@ -38,13 +39,29 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 若用户确认无问题，必须再获得明确收尾确认，例如 `continue`、`yes`、`批准收尾`。随后才处理分支/worktree与归档。
 
+进入收尾选择前，必须显式向用户汇报：
+
+- 当前分支名
+- 当前工作区路径
+- 最初开始这次 change 时记录的 `origin_branch` 与 `origin_workspace_path`
+- 当前是否仍在原始分支/原始工作区
+
+如果当前分支或工作区不同于 `origin_*`，必须明确说明“你当前看到的是临时实现分支或临时 worktree，请先在这里 review 代码；确认无误后再选择收尾方式”。这里必须暂停，等待用户 review，不允许直接进入 merge / 删除。
+
 可选收尾路径：
 
-- 本地合并：切回目标分支、合并、测试，通过后删除 feature branch 和 worktree。
-- PR/MR：推送分支并创建或提示创建 PR/MR，保留 worktree。
+- 本地合并：切回目标分支（默认优先 `origin_branch`，若项目有更明确目标分支则用项目约定）、合并、测试，通过后删除 feature branch 和 worktree。
+- PR/MR：根据仓库托管平台提示用户下一步。如果 remote 明确是 GitHub，使用 `PR`；如果是 GitLab，使用 `MR`；无法判断时写成 `PR/MR`。这一步可以是“帮用户创建”或“提示用户创建”，取决于当前环境工具与用户选择。
 - 保留：不合并不删除，状态仍可标记 `done`。
 
 不要默认自动合并 worktree 到 `main`，也不要默认删除 worktree。合并、PR、删除都是有后果的操作，必须来自用户选择。
+
+推荐向用户展示的收尾选项至少包含：
+
+1. 继续在当前实现分支上 review，暂不收尾
+2. 推送当前分支并创建 `PR` / `MR`
+3. 本地合并回目标分支，并删除临时 branch / worktree
+4. 保留当前分支与 worktree，稍后再处理
 
 ## 3. 归档规则
 
@@ -71,6 +88,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 用户评审结果
 - 选择的收尾路径：本地合并、PR/MR、保留或归档
 - 分支/worktree 的最终状态
+- 当前分支与 `origin_branch` 的关系，以及是否仍保留临时 worktree
 - `tasks.md`、测试与 OpenSpec validate 状态
 - archive 字段：`skipped` 或 `archived`
 

@@ -64,6 +64,14 @@ apply 前至少读取：
 "$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> plan --write
 ```
 
+如果 `origin_branch` 或 `origin_workspace_path` 仍是 `unknown`，则在真正创建 worktree、切换 branch 或开始实现前立即补记当前上下文：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_branch "$(git branch --show-current || echo detached)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_path "$(pwd -P)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_mode "$( "$ONESPEC_BASH" "$ONESPEC_STATE" get <change-id> workspace )"
+```
+
 默认执行路径：
 
 - 优先使用 `subagent-driven-development`。
@@ -79,7 +87,19 @@ apply 前至少读取：
 - 如果实现改变了已批准事实，先同步更新 `design.md`、`proposal.md` 或 spec delta，再继续。
 - 不允许实现结果与已批准 OpenSpec 范围静默漂移。
 - 运行项目测试和 `openspec validate <change-id> --strict`。
-- 将状态置为 `review`。
+- 将状态置为 `review`，并生成 review handoff。
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase review
+"$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> review --write
+```
+
+完成实现与验证后，必须明确暂停，不允许直接继续做 merge、删除 worktree、归档或“顺手收尾”。此时必须：
+
+- 告诉用户当前所在分支与工作区路径。
+- 如果当前分支或工作区路径不同于 `origin_branch` / `origin_workspace_path`，明确指出“当前实现位于临时分支或临时 worktree，请先在这里 review diff 与验证结果”。
+- 只汇报实现结果、验证结果、当前分支/worktree 状态，以及“下一步应进入 `onespec-archive` 做 review-closeout”。
+- 在用户完成 review 并明确要求收尾前，不允许擅自删除临时 worktree。
 
 汇报时覆盖：
 
@@ -88,7 +108,8 @@ apply 前至少读取：
 - 对 `tasks.md` 做了哪些回填
 - 是否更新了 `proposal.md`、`design.md` 或 spec delta
 - 测试与 `openspec validate <change-id> --strict` 是否通过
-- 是否 ready for archive
+- 当前分支、当前工作区路径，以及它们是否不同于 `origin_branch` / `origin_workspace_path`
+- 是否 ready for review-closeout
 
 ## 3. 原生 OpenSpec Apply
 

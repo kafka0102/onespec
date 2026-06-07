@@ -64,6 +64,14 @@ Record the plan and create handoff:
 "$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> plan --write
 ```
 
+If `origin_branch` or `origin_workspace_path` is still `unknown`, fill them in immediately before creating a worktree, switching branches, or starting implementation:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_branch "$(git branch --show-current || echo detached)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_path "$(pwd -P)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_mode "$( "$ONESPEC_BASH" "$ONESPEC_STATE" get <change-id> workspace )"
+```
+
 Default execution path:
 
 - prefer `subagent-driven-development`
@@ -79,7 +87,19 @@ After implementation, always sync OpenSpec artifacts:
 - if implementation changed approved facts, update `design.md`, `proposal.md`, or spec deltas before proceeding
 - do not let implementation silently drift away from approved OpenSpec scope
 - run project tests and `openspec validate <change-id> --strict`
-- move state to `review`
+- move state to `review` and generate review handoff
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase review
+"$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> review --write
+```
+
+After implementation and verification, the flow must pause. Do not continue directly into merge, worktree deletion, archive, or any implicit closeout. At this point the agent must:
+
+- tell the user the current branch and current workspace path
+- if the current branch or workspace differs from `origin_branch` / `origin_workspace_path`, explicitly say that implementation now lives in a temporary branch or temporary worktree and the user should review there first
+- report only implementation results, verification results, current branch/worktree status, and that the next step is `onespec-archive` for review-closeout
+- never delete a temporary worktree before the user finishes review and explicitly requests closeout
 
 Report must cover:
 
@@ -88,7 +108,8 @@ Report must cover:
 - what was synced back into `tasks.md`
 - whether `proposal.md`, `design.md`, or spec deltas changed
 - whether tests and `openspec validate <change-id> --strict` passed
-- whether the change is ready for archive
+- the current branch, current workspace path, and whether they differ from `origin_branch` / `origin_workspace_path`
+- whether the change is ready for review-closeout
 
 ## 3. Native OpenSpec Apply
 

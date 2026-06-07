@@ -158,8 +158,13 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> implementation_path <openspec-apply|superpowers>
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> execution_method <subagent|local|native>
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> workspace <worktree|current-branch|main-override>
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_branch "$(git branch --show-current || echo detached)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_path "$(pwd -P)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_mode <worktree|current-branch|main-override>
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase approved
 ```
+
+这里的 `origin_*` 字段表示“用户最初开始这次 change 时所在的分支和工作区”。后续如果实现发生在新 branch 或临时 worktree 中，`onespec-execute` 与 `onespec-archive` 必须拿它来提示用户当前 review 位置与收尾选项。
 
 ## 5. 停止条件
 

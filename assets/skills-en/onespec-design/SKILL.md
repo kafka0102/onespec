@@ -158,8 +158,13 @@ After confirmation record:
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> implementation_path <openspec-apply|superpowers>
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> execution_method <subagent|local|native>
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> workspace <worktree|current-branch|main-override>
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_branch "$(git branch --show-current || echo detached)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_path "$(pwd -P)"
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_mode <worktree|current-branch|main-override>
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase approved
 ```
+
+These `origin_*` fields represent the branch and workspace where the user originally started the change. If implementation later happens in a different branch or temporary worktree, `onespec-execute` and `onespec-archive` must use them when prompting for review and closeout.
 
 ## 5. Stop Conditions
 

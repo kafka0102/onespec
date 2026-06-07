@@ -29,6 +29,7 @@ Read the minimum necessary context:
 - relevant `openspec/specs/**`
 - latest test results and `openspec validate <change-id> --strict` result
 - current branch, worktree, and workspace status
+- `origin_branch`, `origin_workspace_path`, and `origin_workspace_mode`
 
 If state has not reached `review`, explain what is still missing: implementation, verification, `tasks.md` sync, or proposal approval.
 
@@ -38,13 +39,29 @@ Let the user review the implementation. If they raise issues, continue editing a
 
 If the user confirms the result, still require an explicit closeout confirmation such as `continue`, `yes`, or `approve closeout` before touching branch/worktree state or archive.
 
+Before offering closeout choices, explicitly tell the user:
+
+- the current branch name
+- the current workspace path
+- the recorded `origin_branch` and `origin_workspace_path`
+- whether the current review location still matches the original branch/workspace
+
+If the current branch or workspace differs from the recorded `origin_*` fields, explicitly say that the implementation is now living in a temporary branch or temporary worktree, and that the user should review there first. Pause at that point and wait for review feedback before proposing merge or deletion.
+
 Supported closeout paths:
 
-- local merge: switch to target branch, merge, test, then delete feature branch and worktree
-- PR/MR: push branch and create or prompt for PR/MR, keep the worktree
+- local merge: switch to the target branch (default to `origin_branch` unless the project defines a different target), merge, test, then delete feature branch and worktree
+- PR/MR: tailor the wording to the hosting platform. Use `PR` for GitHub remotes, `MR` for GitLab remotes, and `PR/MR` if the platform is unclear. Either create it or prompt the user to create it depending on available tools and the user's choice
 - preserve: do not merge and do not delete; state may still move to `done`
 
 Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Merge, PR, and deletion are consequential actions and require an explicit user choice.
+
+The user-facing closeout menu should include at least:
+
+1. continue reviewing on the current implementation branch and do not close out yet
+2. push the current branch and create a `PR` / `MR`
+3. merge locally back to the target branch and delete the temporary branch / worktree
+4. preserve the current branch and worktree for later
 
 ## 3. Archive Rules
 
@@ -71,6 +88,7 @@ The closeout report must cover:
 - user review result
 - selected closeout path: local merge, PR/MR, preserve, or archive
 - final branch/worktree state
+- how the current branch relates to `origin_branch`, and whether a temporary worktree is still preserved
 - status of `tasks.md`, tests, and OpenSpec validate
 - archive field: `skipped` or `archived`
 

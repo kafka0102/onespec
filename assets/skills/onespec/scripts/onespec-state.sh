@@ -84,6 +84,9 @@ complexity: unknown
 implementation_path: undecided
 execution_method: undecided
 workspace: undecided
+origin_branch: unknown
+origin_workspace_path: unknown
+origin_workspace_mode: unknown
 plan: null
 handoff_context: null
 handoff_hash: null
@@ -115,7 +118,7 @@ cmd_set() {
   [ -f "$file" ] || die "state not found: $file"
 
   case "$key" in
-    phase|ambiguity|complexity|implementation_path|execution_method|workspace|plan|handoff_context|handoff_hash|review_result|archive|updated_at)
+    phase|ambiguity|complexity|implementation_path|execution_method|workspace|origin_branch|origin_workspace_path|origin_workspace_mode|plan|handoff_context|handoff_hash|review_result|archive|updated_at)
       ;;
     *)
       die "unsupported field: $key"
@@ -135,7 +138,7 @@ cmd_recover() {
 
   echo "OneSpec 恢复状态"
   echo "change: $change"
-  for key in phase ambiguity complexity implementation_path execution_method workspace plan handoff_context handoff_hash review_result archive updated_at; do
+  for key in phase ambiguity complexity implementation_path execution_method workspace origin_branch origin_workspace_path origin_workspace_mode plan handoff_context handoff_hash review_result archive updated_at; do
     printf '%s: %s\n' "$key" "$(field_value "$file" "$key")"
   done
 
