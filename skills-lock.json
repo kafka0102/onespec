@@ -6,14 +6,14 @@
       "ref": "main",
       "sourceType": "github",
       "skillPath": "assets/skills/onespec/SKILL.md",
-      "computedHash": "4b0ec34365976b9c978291f5cec9880bb37d4abab03b0f672ca276476b4c86e9"
+      "computedHash": "1cece4ad210282e1f401b4a9d1b7258e67043b2ffbdcadc40fa88f0d1acc198c"
     },
     "onespec-archive": {
       "source": "kafka0102/onespec",
       "ref": "main",
       "sourceType": "github",
       "skillPath": "assets/skills/onespec-archive/SKILL.md",
-      "computedHash": "53f4177ad0b24b583af462d7e83b20d709582e4887dd5bd22a3919f333601771"
+      "computedHash": "f7fcb087209fa44ae0c661a3f7aca8737b1e7d334a8caf2a047307fadee3f51d"
     },
     "onespec-design": {
       "source": "kafka0102/onespec",
@@ -27,7 +27,7 @@
       "ref": "main",
       "sourceType": "github",
       "skillPath": "assets/skills/onespec-execute/SKILL.md",
-      "computedHash": "e3ab875774c0ac2eedaa15b8095b64996452f51b1fb1ff70e36a4ae6aee79a08"
+      "computedHash": "194aaae88d61881531407f87903aa4479eb1a963bbdaeb26ea10194673c96093"
     }
   }
 }
