@@ -1,8 +1,18 @@
 {
-  "name": "@local/onespec",
+  "name": "@your-scope/onespec",
   "version": "0.1.0",
-  "description": "Lightweight OpenSpec + Superpowers coding workflow skill installer",
+  "description": "OpenSpec + Superpowers workflow skill installer for Codex",
+  "keywords": [
+    "openspec",
+    "superpowers",
+    "skills",
+    "codex",
+    "workflow"
+  ],
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "onespec": "./bin/onespec.js"
   },

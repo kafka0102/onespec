@@ -34,6 +34,7 @@ test('doctorProject reports missing dependencies without touching the network', 
 
   assert.equal(report.onespec.installed, false);
   assert.equal(report.openspecCli.available, false);
+  assert.equal(report.hasOpenSpecProject, false);
   assert.equal(report.superpowers.available, false);
   assert.match(report.nextSteps.join('\n'), /onespec init/);
   assert.match(report.nextSteps.join('\n'), /OpenSpec CLI/);
@@ -63,12 +64,14 @@ test('doctorProject passes when OneSpec and required Superpowers skills are inst
   });
 
   assert.equal(report.onespec.installed, true);
+  assert.equal(report.onespec.language, 'zh');
   assert.deepEqual(report.onespec.installedSkills, BUNDLED_ONESPEC);
   assert.deepEqual(report.onespec.missingSkills, []);
   assert.equal(report.openspecCli.available, true);
+  assert.equal(report.hasOpenSpecProject, false);
   assert.equal(report.superpowers.available, true);
   assert.deepEqual(report.superpowers.missing, []);
-  assert.deepEqual(report.nextSteps, ['环境检查通过。可以在 Codex 中使用 `onespec` 工作流。']);
+  assert.deepEqual(report.nextSteps, ['当前项目尚未初始化 OpenSpec，请先运行 `openspec init`。']);
 });
 
 test('doctorProject reports missing bundled OneSpec child skills', async () => {
@@ -90,6 +93,27 @@ test('doctorProject reports missing bundled OneSpec child skills', async () => {
     'onespec-archive',
   ]);
   assert.match(report.nextSteps.join('\n'), /onespec init --overwrite/);
+});
+
+test('doctorProject detects English OneSpec bundle language', async () => {
+  const projectPath = await tmpProject();
+  await initProject(projectPath, {
+    platform: 'codex',
+    scope: 'project',
+    yes: true,
+    language: 'en',
+  });
+
+  const report = await doctorProject(projectPath, {
+    platform: 'codex',
+    scope: 'project',
+    skillRoots: [],
+    commandChecker: () => false,
+  });
+
+  assert.equal(report.onespec.installed, true);
+  assert.equal(report.onespec.english, true);
+  assert.equal(report.onespec.language, 'en');
 });
 
 test('doctorProject can detect Superpowers from an alternate global-style skills root', async () => {

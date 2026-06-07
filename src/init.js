@@ -14,8 +14,23 @@ export const BUNDLED_ONESPEC_SKILLS = [
   'onespec-archive',
 ];
 
+export const SUPPORTED_LANGUAGES = {
+  zh: {
+    id: 'zh',
+    name: '中文',
+  },
+  en: {
+    id: 'en',
+    name: 'English',
+  },
+};
+
 function assetsSkillsDir() {
   return path.resolve(__dirname, '..', 'assets', 'skills');
+}
+
+function localizedSkillsDir(language) {
+  return path.resolve(__dirname, '..', 'assets', `skills-${language}`);
 }
 
 async function exists(filePath) {
@@ -52,6 +67,7 @@ export async function initProject(projectPath, options = {}) {
   const platform = options.platform ?? 'codex';
   const scope = options.scope ?? 'project';
   const overwrite = Boolean(options.overwrite);
+  const language = options.language ?? 'zh';
 
   if (!PLATFORMS[platform]) {
     throw new Error(`Unsupported platform "${platform}". Currently only "codex" is supported.`);
@@ -59,8 +75,14 @@ export async function initProject(projectPath, options = {}) {
   if (!['project', 'global'].includes(scope)) {
     throw new Error(`Unsupported scope "${scope}". Use "project" or "global".`);
   }
+  if (!SUPPORTED_LANGUAGES[language]) {
+    throw new Error(
+      `Unsupported language "${language}". Use one of: ${Object.keys(SUPPORTED_LANGUAGES).join(', ')}.`,
+    );
+  }
 
   const sourceRoot = assetsSkillsDir();
+  const localizedRoot = localizedSkillsDir(language);
   const skillsDir = getSkillDir(resolvedProject, scope, platform);
   const destination = path.join(skillsDir, 'onespec');
   const installedSkills = [];
@@ -82,6 +104,12 @@ export async function initProject(projectPath, options = {}) {
       await rm(target, { recursive: true, force: true });
     }
     await cp(source, target, { recursive: true });
+    if (language !== 'zh') {
+      const localizedSkill = path.join(localizedRoot, skillName, 'SKILL.md');
+      if (await exists(localizedSkill)) {
+        await cp(localizedSkill, path.join(target, 'SKILL.md'));
+      }
+    }
     await makeBundledScriptsExecutable(target);
     installedSkills.push(skillName);
   }
@@ -95,6 +123,8 @@ export async function initProject(projectPath, options = {}) {
     platform,
     platformName: PLATFORMS[platform].name,
     scope,
+    language,
+    languageName: SUPPORTED_LANGUAGES[language].name,
     skillPath: destination,
     installedSkill: installedSkills.length > 0,
     skippedExisting: installedSkills.length === 0 && skippedSkills.length > 0,

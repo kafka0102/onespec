@@ -8,6 +8,10 @@ async function readSkill(name) {
   return readFile(`assets/skills/${name}/SKILL.md`, 'utf8');
 }
 
+async function readEnglishSkill(name) {
+  return readFile(`assets/skills-en/${name}/SKILL.md`, 'utf8');
+}
+
 function expectIncludes(content, expected) {
   assert.match(content, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 }
@@ -92,4 +96,16 @@ test('onespec-archive documents review closeout and archive guardrails', async (
   ]) {
     expectIncludes(skill, expected);
   }
+});
+
+test('English skill overlays exist for the full OneSpec bundle', async () => {
+  for (const skillName of BUNDLED_SKILLS) {
+    const content = await readEnglishSkill(skillName);
+    expectIncludes(content, `name: ${skillName}`);
+  }
+
+  expectIncludes(await readEnglishSkill('onespec'), '# OneSpec Workflow');
+  expectIncludes(await readEnglishSkill('onespec-design'), '# OneSpec Design');
+  expectIncludes(await readEnglishSkill('onespec-execute'), '# OneSpec Execute');
+  expectIncludes(await readEnglishSkill('onespec-archive'), '# OneSpec Archive');
 });

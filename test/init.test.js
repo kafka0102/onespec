@@ -76,10 +76,32 @@ test('CLI init installs Chinese OneSpec skill with json output', async () => {
 
   assert.equal(result.platform, 'codex');
   assert.equal(result.scope, 'project');
+  assert.equal(result.language, 'zh');
   assert.equal(result.installedSkill, true);
   assert.deepEqual(result.installedSkills, BUNDLED_SKILLS);
   assert.match(skill, /OneSpec 工作流/);
   assert.doesNotMatch(skill, /Language for/);
+});
+
+test('initProject can install English skill overlays', async () => {
+  const projectPath = await tmpProject();
+
+  const result = await initProject(projectPath, {
+    platform: 'codex',
+    scope: 'project',
+    yes: true,
+    language: 'en',
+  });
+
+  const routerSkill = await readFile(
+    path.join(projectPath, '.codex', 'skills', 'onespec', 'SKILL.md'),
+    'utf8',
+  );
+
+  assert.equal(result.language, 'en');
+  assert.equal(result.languageName, 'English');
+  assert.match(routerSkill, /# OneSpec Workflow/);
+  assert.doesNotMatch(routerSkill, /# OneSpec 工作流/);
 });
 
 test('initProject installs missing bundled skills even when router already exists', async () => {

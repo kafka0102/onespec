@@ -24,6 +24,10 @@ async function exists(filePath) {
   }
 }
 
+async function hasOpenSpecProject(projectPath) {
+  return exists(path.join(projectPath, 'openspec'));
+}
+
 function defaultCommandChecker(command) {
   try {
     const checker = process.platform === 'win32' ? 'where' : 'which';
@@ -82,13 +86,16 @@ async function isChineseOneSpec(projectPath, scope, platform) {
 
   const content = await readFile(routerPath, 'utf8');
   const chinese = content.includes('OneSpec 工作流');
+  const english = content.includes('# OneSpec Workflow');
   return {
-    installed: missingSkills.length === 0 && chinese,
+    installed: missingSkills.length === 0 && (chinese || english),
     skillPath: routerPath,
     skillPaths,
     installedSkills,
     missingSkills,
     chinese,
+    english,
+    language: chinese ? 'zh' : english ? 'en' : 'unknown',
   };
 }
 
@@ -121,6 +128,7 @@ export async function doctorProject(projectPath, options = {}) {
   const openspecCli = {
     available: commandChecker('openspec'),
   };
+  const openSpecProjectInstalled = await hasOpenSpecProject(resolvedProject);
   const superpowers = {
     available: missing.length === 0,
     required: REQUIRED_SUPERPOWERS,
@@ -131,15 +139,17 @@ export async function doctorProject(projectPath, options = {}) {
   const nextSteps = [];
   if (onespec.missingSkills.length > 0) {
     nextSteps.push(
-      `缺少 OneSpec Skills：${onespec.missingSkills.join(', ')}。运行 \`onespec init --overwrite\` 补齐中文 OneSpec Skill bundle。`,
+      `缺少 OneSpec Skills：${onespec.missingSkills.join(', ')}。运行 \`onespec init --overwrite\` 补齐 OneSpec Skill bundle。`,
     );
   } else if (!onespec.installed) {
-    nextSteps.push('运行 `onespec init --yes` 安装中文 OneSpec Skill。');
-  } else if (!onespec.chinese) {
-    nextSteps.push('当前 OneSpec Skill 不是中文版本，运行 `onespec init --overwrite` 覆盖安装。');
+    nextSteps.push('运行 `onespec init --yes` 安装 OneSpec Skill。');
+  } else if (!onespec.chinese && !onespec.english) {
+    nextSteps.push('当前 OneSpec Skill 无法识别语言版本，运行 `onespec init --overwrite` 覆盖安装。');
   }
   if (!openspecCli.available) {
     nextSteps.push('未找到 OpenSpec CLI，请安装 OpenSpec CLI 并在目标项目运行 `openspec init`。');
+  } else if (scope === 'project' && !openSpecProjectInstalled) {
+    nextSteps.push('当前项目尚未初始化 OpenSpec，请先运行 `openspec init`。');
   }
   if (!superpowers.available) {
     nextSteps.push(`缺少 Superpowers Skills：${missing.join(', ')}。请先安装 Superpowers。`);
@@ -155,6 +165,7 @@ export async function doctorProject(projectPath, options = {}) {
     scope,
     onespec,
     openspecCli,
+    hasOpenSpecProject: openSpecProjectInstalled,
     superpowers,
     nextSteps,
   };
