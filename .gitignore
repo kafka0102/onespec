@@ -1,2 +1,4 @@
 .github/*
+!.github/workflows/
+!.github/workflows/**
 skills-lock.json
