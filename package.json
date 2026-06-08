@@ -1,6 +1,6 @@
 {
   "name": "@kafka0102/onespec",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "OpenSpec + Superpowers workflow skill installer for Codex",
   "keywords": [
     "openspec",
