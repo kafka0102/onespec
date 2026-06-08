@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -31,22 +31,12 @@ async function initChangeState(projectPath, change, overrides = {}) {
   }
 }
 
-async function createMockBinary(binDir, name, body) {
-  const filePath = path.join(binDir, name);
-  await writeFile(filePath, body);
-  await chmod(filePath, 0o755);
-}
-
-test('onespec-closeout inspect reports GitHub review request support and worktree cleanup defaults', async () => {
+test('onespec-closeout inspect reports worktree cleanup defaults and local merge recommendation', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
-  const binDir = await tmpProject('onespec-closeout-bin-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
 
   await initGitRepo(projectPath);
-  await execFileAsync('git', ['remote', 'add', 'origin', 'https://github.com/example/repo.git'], {
-    cwd: projectPath,
-  });
   await initChangeState(projectPath, 'add-login', {
     origin_branch: 'main',
     origin_workspace_path: projectPath,
@@ -86,72 +76,22 @@ test('onespec-closeout inspect reports GitHub review request support and worktre
     { cwd: worktreePath },
   );
 
-  await createMockBinary(
-    binDir,
-    'gh',
-    `#!/bin/sh
-if [ "$1" = "auth" ] && [ "$2" = "status" ] && [ "$3" = "--hostname" ] && [ "$4" = "github.com" ]; then
-  exit 0
-fi
-exit 1
-`,
-  );
-
   const { stdout } = await execFileAsync('bash', [closeoutScriptPath, 'inspect', 'add-login'], {
     cwd: worktreePath,
-    env: {
-      ...process.env,
-      PATH: `${binDir}:${process.env.PATH}`,
-    },
   });
 
-  assert.match(stdout, /repo_platform: github/);
-  assert.match(stdout, /review_request_kind: PR/);
-  assert.match(stdout, /review_request_supported: true/);
-  assert.match(stdout, /review_request_tool: gh/);
   assert.match(stdout, /temporary_worktree: true/);
-  assert.match(stdout, /cleanup_local_branch_after_review_request: true/);
-  assert.match(stdout, /cleanup_remote_branch_after_review_request: false/);
-  assert.match(stdout, /recommended_actions: submit-review/);
+  assert.match(stdout, /cleanup_local_branch_after_merge: true/);
+  assert.match(stdout, /cleanup_local_worktree_after_merge: true/);
+  assert.match(stdout, /cleanup_local_branch_after_preserve: false/);
+  assert.match(stdout, /recommended_actions: merge/);
 });
 
-test('onespec-closeout guard-review-request fails with GitLab-specific error when glab is unavailable', async () => {
+test('onespec-closeout validate-actions allows archive on target branch and recommends merge plus archive there', async () => {
   const projectPath = await tmpProject();
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
 
   await initGitRepo(projectPath);
-  await execFileAsync('git', ['remote', 'add', 'origin', 'git@gitlab.com:example/repo.git'], {
-    cwd: projectPath,
-  });
-  await initChangeState(projectPath, 'close-issue', {
-    origin_branch: 'main',
-    origin_workspace_path: projectPath,
-    origin_workspace_mode: 'current-branch',
-  });
-
-  await assert.rejects(
-    execFileAsync('bash', [closeoutScriptPath, 'guard-review-request', 'close-issue'], {
-      cwd: projectPath,
-      env: {
-        ...process.env,
-        PATH: process.env.PATH ?? '',
-      },
-    }),
-    (error) => {
-      assert.match(error.stderr, /无法创建 MR：未检测到 glab，或 glab 未登录到 gitlab\.com。/);
-      return true;
-    },
-  );
-});
-
-test('onespec-closeout validate-actions rejects review-request plus archive and recommends merge plus archive on target branch', async () => {
-  const projectPath = await tmpProject();
-  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
-
-  await initGitRepo(projectPath);
-  await execFileAsync('git', ['remote', 'add', 'origin', 'https://github.com/example/repo.git'], {
-    cwd: projectPath,
-  });
   await initChangeState(projectPath, 'archive-login', {
     origin_branch: 'main',
     origin_workspace_path: projectPath,
@@ -160,16 +100,59 @@ test('onespec-closeout validate-actions rejects review-request plus archive and 
 
   const invalid = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'validate-actions', 'archive-login', 'submit-review', 'archive'],
+    [closeoutScriptPath, 'validate-actions', 'archive-login', 'archive'],
     { cwd: projectPath },
   );
   const recommended = await execFileAsync('bash', [closeoutScriptPath, 'recommend-actions', 'archive-login'], {
     cwd: projectPath,
   });
 
-  assert.match(invalid.stdout, /selected_actions: submit-review,archive/);
-  assert.match(invalid.stdout, /valid: false/);
-  assert.match(invalid.stdout, /不能同时选择“提交 PR\/MR”和“执行归档”/);
+  assert.match(invalid.stdout, /selected_actions: archive/);
+  assert.match(invalid.stdout, /valid: true/);
+  assert.match(invalid.stdout, /允许单独执行归档：当前已在目标分支路径上。/);
   assert.match(recommended.stdout, /temporary_worktree: false/);
   assert.match(recommended.stdout, /recommended_actions: merge,archive/);
+});
+
+test('onespec-closeout validate-actions rejects archive without merge from a temporary worktree', async () => {
+  const projectPath = await tmpProject();
+  const worktreePath = await tmpProject('onespec-closeout-wt-');
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+
+  await initGitRepo(projectPath);
+  await initChangeState(projectPath, 'ship-login', {
+    origin_branch: 'main',
+    origin_workspace_path: projectPath,
+    origin_workspace_mode: 'worktree',
+  });
+
+  await execFileAsync('git', ['worktree', 'add', '-b', 'feature/ship-login', worktreePath, 'HEAD'], {
+    cwd: projectPath,
+  });
+  await mkdir(path.join(worktreePath, 'openspec', 'changes', 'ship-login'), { recursive: true });
+  await execFileAsync('bash', [stateScriptPath, 'init', 'ship-login'], { cwd: worktreePath });
+  await execFileAsync('bash', [stateScriptPath, 'set', 'ship-login', 'origin_branch', 'main'], {
+    cwd: worktreePath,
+  });
+  await execFileAsync(
+    'bash',
+    [stateScriptPath, 'set', 'ship-login', 'origin_workspace_path', projectPath],
+    { cwd: worktreePath },
+  );
+  await execFileAsync(
+    'bash',
+    [stateScriptPath, 'set', 'ship-login', 'origin_workspace_mode', 'worktree'],
+    { cwd: worktreePath },
+  );
+
+  const { stdout } = await execFileAsync(
+    'bash',
+    [closeoutScriptPath, 'validate-actions', 'ship-login', 'archive'],
+    { cwd: worktreePath },
+  );
+
+  assert.match(stdout, /selected_actions: archive/);
+  assert.match(stdout, /valid: false/);
+  assert.match(stdout, /不能单独执行归档：当前代码尚未确认位于目标分支。/);
 });

@@ -1,6 +1,6 @@
 ---
 name: onespec-archive
-description: 当用户需要对 OneSpec change 做最终评审、处理反馈、合并、保留分支、创建 PR/MR 或执行 OpenSpec archive 时使用。
+description: 当用户需要对 OneSpec change 做最终评审、处理反馈、合并、保留分支、处理 worktree 或执行 OpenSpec archive 时使用。
 ---
 
 # OneSpec Archive
@@ -56,45 +56,11 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 可选收尾路径：
 
 - 本地合并：切回目标分支（默认优先 `origin_branch`，若项目有更明确目标分支则用项目约定）、合并、测试，通过后删除 feature branch 和 worktree。
-- PR/MR：根据仓库托管平台提示用户下一步。如果 remote 明确是 GitHub，使用 `PR`；如果是 GitLab，使用 `MR`；无法判断时写成 `PR/MR`。这一步可以是“帮用户创建”或“提示用户创建”，取决于当前环境工具与用户选择。
 - 保留：不合并不删除，状态仍可标记 `done`。
 
-不要默认自动合并 worktree 到 `main`，也不要默认删除 worktree。合并、PR、删除都是有后果的操作，必须来自用户选择。
+不要默认自动合并 worktree 到 `main`，也不要默认删除 worktree。合并、删除都是有后果的操作，必须来自用户选择。
 
-## 2.1 收尾前能力探测
-
-在展示 `PR` / `MR` 选项前，先探测仓库类型、本地命令与认证状态，而不是等用户确认后才失败。
-
-推荐顺序：
-
-1. 用 `git remote get-url origin` 解析默认 remote。
-2. 根据 host 判断仓库类型：
-   - `github.com` 或 GitHub Enterprise：按 GitHub 处理。
-   - `gitlab.com`、自建 GitLab 域名，或项目明确声明 GitLab：按 GitLab 处理。
-   - 无法判断：视为 `unknown`，展示文案用 `PR/MR`，但不要承诺可自动创建。
-3. 检查本地能力：
-   - GitHub：`command -v gh`，随后 `gh auth status --hostname <host>`。
-   - GitLab：`command -v glab`，随后 `glab auth status --hostname <host>`。
-4. 记录能力结果：
-   - `review_request_supported=true|false`
-   - `review_request_tool=gh|glab|none`
-   - `review_request_error=<具体原因>`
-
-GitLab 默认检查项必须至少包含：
-
-- `origin` remote 可解析到 GitLab host
-- 本地存在 `glab`
-- `glab` 已对该 host 完成认证
-
-如果用户尝试执行 `创建 PR` / `创建 MR`，但能力探测失败，必须立即报错并停止该操作，推荐提示：
-
-- GitHub：`无法创建 PR：未检测到 gh，或 gh 未登录到 <host>。`
-- GitLab：`无法创建 MR：未检测到 glab，或 glab 未登录到 <host>。`
-- Unknown：`无法自动创建 PR/MR：未能判断仓库托管平台，请先确认 remote 或手动创建。`
-
-不要在能力不足时退化成“假装已经创建完成”；只能明确失败，或改为提示用户手动处理。
-
-## 2.2 Superpowers Worktree 优先规则
+## 2.1 Superpowers Worktree 优先规则
 
 如果 `origin_workspace_mode=worktree`，或当前路径是实现期新建的临时 worktree，收尾时必须把“回收到原始分支/工作区”的动作提到最前面说明。
 
@@ -108,21 +74,16 @@ GitLab 默认检查项必须至少包含：
 默认推荐顺序：
 
 1. 先在临时 worktree 完成 review。
-2. 用户确认后，选择“提交评审单”或“本地合并”。
+2. 用户确认后，优先选择“本地合并”，把代码收回 `origin_branch` 或项目目标分支。
 3. 如果选择本地合并：合并回 `origin_branch` 或项目目标分支，测试通过后删除本地临时 branch / worktree。
-4. 如果选择 `PR` / `MR`：
-   - 先 push 当前实现分支。
-   - 成功创建 `PR` / `MR` 后，删除本地临时 branch / worktree。
-   - 不要删除远端分支；远端分支仍需承载 review。
-5. 如果用户选择保留，则保留 worktree，不做删除。
+4. 如果用户选择保留，则保留 worktree，不做删除。
 
-这里的“删除分支”默认只指本地临时分支；除非用户明确要求，否则不要删除远端 review 分支。
+这里的“删除分支”默认只指本地临时分支。
 
-## 2.3 多选收尾组合
+## 2.2 多选收尾组合
 
-收尾选项不要再只做单选。至少把以下三个动作设计成可多选组合：
+收尾选项不要再只做单选。至少把以下两个动作设计成可多选组合：
 
-- `提交 PR/MR`
 - `合并分支`
 - `执行归档`
 
@@ -132,46 +93,41 @@ GitLab 默认检查项必须至少包含：
 
 推荐的组合校验逻辑：
 
-- `{提交 PR/MR}`：合法。适用于先走代码评审，不立即归档。
 - `{合并分支}`：合法。适用于本地直接合并，但默认不归档。
 - `{合并分支, 执行归档}`：合法，也是“代码已真正落到目标分支后”的默认推荐组合。
-- `{提交 PR/MR, 执行归档}`：默认不合法。原因是代码尚未真正合并到目标分支，不能直接 archive。
-- `{提交 PR/MR, 合并分支}`：默认不合法。两者代表不同集成路径，除非项目另有明确流程，否则必须要求用户二选一。
+- `{执行归档}`：仅当代码已经位于目标分支时合法；如果当前还在临时 branch / worktree，默认不合法。
 - `{}`：合法，表示这次仅结束 review，不做集成与归档；状态可置为 `done`，并提示之后仍可归档。
 
 如果用户勾选了非法组合，必须明确指出冲突原因，不要替用户猜测执行顺序。
 
 默认推荐组合：
 
-- 当前在 Superpowers 临时 worktree，且仓库是 GitHub / GitLab：推荐 `{提交 PR/MR}`，并明确“创建完成后会删除本地临时 branch / worktree，保留远端分支供 review”。
+- 当前在 Superpowers 临时 worktree：推荐 `{合并分支}`，并明确“合并成功后会删除本地临时 branch / worktree”。
 - 当前不在临时 worktree，且用户明确要本地落地：推荐 `{合并分支, 执行归档}`。
 - 用户只想结束当前轮操作、不立即集成：推荐 `{}`，并提示“稍后如代码完成合并，可再执行归档”。
 
 推荐向用户展示的收尾选项至少包含：
 
 1. 继续在当前实现分支上 review，暂不收尾
-2. 推送当前分支并创建 `PR` / `MR`
-3. 本地合并回目标分支，并删除临时 branch / worktree
-4. 保留当前分支与 worktree，稍后再处理
+2. 本地合并回目标分支，并删除临时 branch / worktree
+3. 保留当前分支与 worktree，稍后再处理
+4. 若代码已真正位于目标分支，可再执行归档
 
 给用户展示这些选项时，不要只写描述；必须附上明确输入词，推荐至少包含：
 
 - `继续评审`
-- `创建 PR`
 - `本地合并`
 - `保留分支`
+- `执行归档`
 
 对有后果的操作，执行前还要再要一次二次确认，推荐直接要求用户输入：
 
-- `确认创建 PR`
 - `确认本地合并`
 - `确认保留分支`
 
-如果仓库托管平台是 GitLab，可以把 `创建 PR` / `确认创建 PR` 替换为 `创建 MR` / `确认创建 MR`；无法判断平台时，正文里写 `PR/MR`，但仍要给出一组可直接输入的确认词。
-
 ## 3. 归档规则
 
-进入 archive、merge、PR/MR 或保留分支的最终收尾前，必须检查当前是否仍有“与本次 change 相关的未提交代码”：
+进入 archive、merge 或保留分支的最终收尾前，必须检查当前是否仍有“与本次 change 相关的未提交代码”：
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_COMMIT" related-dirty <change-id>
@@ -197,7 +153,7 @@ GitLab 默认检查项必须至少包含：
 - 只能提交 `touched-files.txt` 与当前脏文件的交集，不允许把无关改动一并提交。
 
 - 如果代码已合并到目标分支且用户选择归档，执行 OpenSpec archive，并将状态设为 `archived`。
-- 如果用户不归档，或实现仍停留在 PR/MR/保留分支上，将状态设为 `done`，并提示之后可再运行归档。
+- 如果用户不归档，或实现仍停留在保留分支上，将状态设为 `done`，并提示之后可再运行归档。
 
 已经满足归档前置条件且代码确实已经合并到目标分支后，如需真的执行归档，必须再次要求用户给出明确指令，推荐使用：
 
@@ -213,7 +169,7 @@ GitLab 默认检查项必须至少包含：
 - `tasks.md` 已按实际完成项勾选
 - 项目测试已通过，或未通过项已明确说明
 - `openspec validate <change-id> --strict` 已通过
-- 用户明确选择了合并、PR/MR、保留或归档策略
+- 用户明确选择了合并、保留或归档策略
 - 没有未处理的用户评审反馈
 
 ## 4. 汇报
@@ -221,7 +177,7 @@ GitLab 默认检查项必须至少包含：
 收尾汇报必须覆盖：
 
 - 用户评审结果
-- 选择的收尾路径：本地合并、PR/MR、保留或归档
+- 选择的收尾路径：本地合并、保留或归档
 - 分支/worktree 的最终状态
 - 当前分支与 `origin_branch` 的关系，以及是否仍保留临时 worktree
 - `tasks.md`、测试与 OpenSpec validate 状态

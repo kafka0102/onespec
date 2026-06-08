@@ -96,23 +96,13 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     '用户评审',
     'continue',
     '继续评审',
-    '收尾前能力探测',
-    'command -v gh',
-    'command -v glab',
-    'glab auth status --hostname <host>',
-    'review_request_supported=true|false',
-    '无法创建 MR：未检测到 glab，或 glab 未登录到 <host>。',
     'Superpowers Worktree 优先规则',
     'origin_workspace_mode=worktree',
-    '成功创建 `PR` / `MR` 后，删除本地临时 branch / worktree',
     '多选收尾组合',
-    '`提交 PR/MR`',
     '`{合并分支, 执行归档}`',
     '`{}`',
-    '创建 PR',
     '本地合并',
     '保留分支',
-    '确认创建 PR',
     '确认本地合并',
     '确认保留分支',
     '执行归档',
@@ -120,10 +110,7 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     'origin_branch',
     '临时实现分支或临时 worktree',
     '本地合并',
-    'PR/MR',
     '保留',
-    'GitHub',
-    'GitLab',
     '不要默认自动合并 worktree 到 `main`',
     'OpenSpec archive',
     'related-dirty <change-id>',
@@ -133,6 +120,10 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     'archive <skipped|archived>',
   ]) {
     expectIncludes(skill, expected);
+  }
+
+  for (const unexpected of ['创建 PR', '创建 MR', 'PR/MR', 'command -v gh', 'command -v glab']) {
+    assert.doesNotMatch(skill, new RegExp(unexpected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
 
