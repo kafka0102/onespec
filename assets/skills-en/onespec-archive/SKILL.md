@@ -37,12 +37,9 @@ If state has not reached `review`, explain what is still missing: implementation
 
 Let the user review the implementation. If they raise issues, continue editing and re-verify.
 
-If the user confirms the result, still require an explicit closeout confirmation such as `continue`, `yes`, or `approve closeout` before touching branch/worktree state or archive.
+If the user confirms the result, do not require words like `continue`, `yes`, or `approve closeout`. Show a numbered closeout menu and let the user reply with digits. If the user's intent is not covered, allow free-form instructions.
 
-Do not make the user guess what to type next. When entering `onespec-archive`, provide copyable trigger words such as:
-
-- `enter closeout`: start the review-closeout choices
-- `continue review`: keep reviewing and do not close out yet
+Do not make the user guess what to type next. When entering `onespec-archive`, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `3,5`.
 
 Before offering closeout choices, explicitly tell the user:
 
@@ -56,9 +53,10 @@ If the current branch or workspace differs from the recorded `origin_*` fields, 
 Supported closeout paths:
 
 - local merge: switch to the target branch (default to `origin_branch` unless the project defines a different target), merge, test, then delete feature branch and worktree
+- PR/MR: guide the user to push the branch and create a `PR` or `MR`. If the remote is clearly GitHub, use `PR`; if GitLab, use `MR`; otherwise say `PR/MR`.
 - preserve: do not merge and do not delete; state may still move to `done`
 
-Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Merge and deletion are consequential actions and require an explicit user choice.
+Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Merge, PR/MR, and deletion are consequential actions and require an explicit user choice.
 
 ## 2.1 Superpowers Worktree Priority
 
@@ -82,7 +80,7 @@ By default, "delete branch" here means only the local temporary branch.
 
 ## 2.2 Multi-Select Closeout Combinations
 
-Do not model closeout as a pure single-choice menu anymore. At minimum, make these two actions combinable:
+Do not model closeout as a pure single-choice menu anymore. At minimum, make these two actions combinable. Use numbered combinations such as `3,5`:
 
 - `merge branch`
 - `run archive`
@@ -109,21 +107,21 @@ Default recommended combinations:
 The user-facing closeout menu should include at least:
 
 1. continue reviewing on the current implementation branch and do not close out yet
-2. merge locally back to the target branch and delete the temporary branch / worktree
-3. preserve the current branch and worktree for later
-4. if code is already truly on the target branch, run archive
+2. push the current branch and create a `PR` / `MR`
+3. merge locally back to the target branch and delete the temporary branch / worktree
+4. preserve the current branch and worktree for later
+5. if code is already truly on the target branch, run archive
+Other: if the user's intent is not covered, allow free-form instructions
 
-When presenting those choices, do not show only descriptions. Also give explicit input words, at minimum:
+Menu handling rules:
 
-- `continue review`
-- `merge locally`
-- `preserve branch`
-- `run archive`
-
-For consequential actions, ask for a second explicit confirmation before doing anything. Recommended confirmation words:
-
-- `confirm merge locally`
-- `confirm preserve branch`
+- reply `1`: stay in review and do not close out
+- reply `2`: enter the push-and-create-`PR/MR` flow
+- reply `3`: enter the local-merge and cleanup flow
+- reply `4`: preserve the current state, mark `done` or keep it resumable, and wait for later
+- reply `5`: run archive only when archive prerequisites are satisfied; otherwise explain the blocker
+- reply with multiple digits, such as `3,5`: validate the combination and execute it in order if valid; otherwise explain the conflict explicitly
+- free-form text instead of digits: if intent is clear, follow it; otherwise ask one minimal clarification question
 
 ## 3. Archive Rules
 

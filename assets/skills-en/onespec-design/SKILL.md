@@ -138,12 +138,41 @@ Always state:
 
 Default intent mapping, issue-workflow routing, or implementation recommendations do not count as proposal approval.
 
-Implementation planning is only allowed after the user explicitly approves the proposal / design / spec. `continue`, `yes`, `approve`, or `do it this way` count. Silence, "looks okay", the original "start implementation", "execute this change", or "make plan" do not count as artifact approval.
+Implementation planning is only allowed after the user explicitly approves the proposal / design / spec. At the end of the design phase, do not require the user to type words like `approve`, `yes`, or `continue`; present a numbered menu and let the user reply with digits. Silence, "looks okay", the original "start implementation", "execute this change", or "make plan" do not count as artifact approval.
+
+Use this default approval menu, with the recommended implementation path baked into item 1:
+
+1. approve the current proposal / design / spec and continue with the recommended implementation path
+2. approve the current proposal / design / spec, but change the implementation path, execution method, or workspace
+3. revise the proposal / design / tasks / spec first; I will describe what to change
+4. stop at the design phase for now and do not start implementation yet
+Other: if the user's intent is not covered by the menu, allow free-form instructions
+
+Menu handling rules:
+
+- reply `1`: treat this as approval of the current artifacts and acceptance of the recommended path
+- reply `2`: treat this as approval of the current artifacts, but continue with another numbered menu for only the still-unconfirmed dimensions
+- reply `3`: stay in `onespec-design`, revise artifacts based on feedback, and do not enter implementation
+- reply `4`: pause at the design phase and wait for later instructions
+- free-form text instead of digits: if intent is clear, follow it; otherwise ask one minimal clarification question
 
 If the user chooses `Superpowers`, confirm two choices together:
 
 - execution method: `subagent` or `local`. Recommend `subagent` by default, which maps to `subagent-driven-development`; `local` maps to `executing-plans`.
 - workspace: `worktree` or `current-branch`.
+
+If the user picked item 2, keep using numbered menus instead of requiring full words. Recommended order:
+
+- implementation path:
+  1. `Superpowers`
+  2. `OpenSpec apply`
+- if `Superpowers` is selected, execution method:
+  1. `subagent`
+  2. `local`
+- workspace:
+  1. `worktree`
+  2. `current-branch`
+  Other: allow the user to describe a special workspace arrangement
 
 `main`/`master` rules:
 

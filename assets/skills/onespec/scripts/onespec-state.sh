@@ -147,7 +147,7 @@ cmd_recover() {
       echo "下一步: 执行歧义扫描，然后创建或恢复 OpenSpec 提案"
       ;;
     proposal-ready)
-      echo "下一步: 汇总提案并等待用户明确批准"
+      echo "下一步: 汇总提案并展示编号批准选项，等待用户回复数字"
       ;;
     approved)
       echo "下一步: 创建或校验实现计划"
@@ -159,7 +159,7 @@ cmd_recover() {
       echo "下一步: 继续未完成任务，然后更新 tasks.md"
       ;;
     review)
-      echo "下一步: 等待用户评审；如评审通过并要进入收尾，请输入 \`进入收尾\` 进入 \`onespec-archive\`，否则继续反馈修改意见"
+      echo "下一步: 等待用户评审；评审通过后展示编号收尾选项，用户可回复单个数字或逗号分隔的组合数字"
       ;;
     done|archived)
       echo "下一步: 没有剩余实现工作"
