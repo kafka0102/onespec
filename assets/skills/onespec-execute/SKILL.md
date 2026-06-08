@@ -94,30 +94,6 @@ apply 前至少读取：
 - 如果实现改变了已批准事实，先同步更新 `design.md`、`proposal.md` 或 spec delta，再继续。
 - 不允许实现结果与已批准 OpenSpec 范围静默漂移。
 - 运行项目测试和 `openspec validate <change-id> --strict`。
-- 将状态置为 `review`，并生成 review handoff。
-
-```bash
-"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase review
-"$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> review --write
-```
-
-完成实现与验证后，必须明确暂停，不允许直接继续做 merge、删除 worktree、归档或“顺手收尾”。此时必须：
-
-- 告诉用户当前所在分支与工作区路径。
-- 如果当前分支或工作区路径不同于 `origin_branch` / `origin_workspace_path`，明确指出“当前实现位于临时分支或临时 worktree，请先在这里 review diff 与验证结果”。
-- 不要只停在“下一步应进入 `onespec-archive`”这种抽象提示，也不要只说“做 review-closeout”。必须同时告诉用户如何继续，例如：“如果评审通过并要进入收尾，请回复 `进入收尾` 或 `开始 review-closeout`；如果还要继续看代码，请回复 `继续评审`。”
-- 只汇报实现结果、验证结果、当前分支/worktree 状态，以及下一步进入 `onespec-archive` 的明确入口词。
-- 在用户完成 review 并明确要求收尾前，不允许擅自删除临时 worktree。
-
-汇报时覆盖：
-
-- 使用了哪一个 Superpowers plan 文件
-- 本次完成了哪些 OpenSpec task
-- 对 `tasks.md` 做了哪些回填
-- 是否更新了 `proposal.md`、`design.md` 或 spec delta
-- 测试与 `openspec validate <change-id> --strict` 是否通过
-- 当前分支、当前工作区路径，以及它们是否不同于 `origin_branch` / `origin_workspace_path`
-- 是否 ready for review-closeout
 
 ## 3. 原生 OpenSpec Apply
 
@@ -141,3 +117,64 @@ apply 前至少读取：
 - `tasks.md` 尚未被翻译成可执行 Superpowers plan，但模型试图直接编码
 - 实现过程中发现会改变 scope、design 或 spec 的新需求
 - 测试或 `openspec validate <change-id> --strict` 未通过且尚未修复
+
+## 5. 实现完成 Gate（强制暂停）
+
+> ⚠️ 这是强制 gate。如果 gate 未通过，不允许输出任何总结或收尾建议，不允许进入下一阶段。
+
+### 5.1 强制脚本调用
+
+回填 artifacts 完成且测试通过后，必须执行以下两条命令：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase review
+"$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> review --write
+```
+
+**如果这两条命令未执行，则 gate 未通过。** 不允许跳过这一步直接输出完成汇报。
+
+### 5.2 强制汇报 checklist
+
+执行完上述脚本后，必须向用户输出汇报。汇报 MUST 覆盖以下全部条目，缺一不可：
+
+1. 当前分支名
+2. 当前工作区路径
+3. `origin_branch` 与 `origin_workspace_path`（是否与当前一致）
+4. 使用了哪一个 Superpowers plan 文件
+5. 本次完成了哪些 OpenSpec task
+6. `tasks.md` 回填情况
+7. 是否更新了 `proposal.md`、`design.md` 或 spec delta
+8. 测试结果
+9. `openspec validate <change-id> --strict` 结果
+10. 下一步入口词（必须给出可直接复制的文本）
+
+### 5.3 下一步入口词模板
+
+汇报结尾必须包含以下格式的入口提示（可微调措辞，但结构和入口词不可省略）：
+
+```
+---
+✅ 实现与验证已完成。
+
+📍 当前分支: `<branch>`
+📍 当前工作区: `<path>`
+📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
+
+如果评审通过并要进入收尾，请回复 `进入收尾`。
+如果还要继续看代码或有修改意见，请回复 `继续评审`。
+---
+```
+
+如果当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree，请先在这里 review diff 与验证结果。"
+
+### 5.4 反模式（NEVER）
+
+以下行为构成 gate 违规，绝不允许：
+
+- 实现完成后直接输出"已完成"总结，而未执行 5.1 的脚本
+- 汇报中缺少当前分支/工作区信息（checklist 第 1-3 项）
+- 未给出明确的下一步入口词（如 `进入收尾`、`继续评审`）
+- 将 archive / merge / worktree 删除操作混入实现完成汇报
+- 在用户未回复前自行进入 `onespec-archive` 阶段
+- 用"下一步应进入 onespec-archive"这种抽象描述替代具体入口词
+- 在用户完成 review 并明确要求收尾前，擅自删除临时 worktree

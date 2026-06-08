@@ -33,6 +33,8 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 如果状态尚未到 `review`，先说明缺少什么：未实现、未验证、未回填 `tasks.md`，或 proposal 尚未批准。
 
+入口校验：如果 phase 已到 `review` 但 handoff 文件 `openspec/changes/<change-id>/.onespec/handoff/review-context.md` 不存在，说明 execute gate 可能未正常完成。此时必须告诉用户："执行阶段的 review handoff 未生成，建议先回到执行阶段补充汇报（回复 `补充汇报` 或重新触发 execute gate）。" 不允许静默跳过。
+
 ## 2. 用户评审
 
 实现完成后让用户评审。若用户指出问题，继续修改并重新验证。

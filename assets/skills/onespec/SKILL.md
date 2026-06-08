@@ -53,3 +53,4 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 读取最少必要上下文：`openspec/config.yaml`、`openspec/project.md`、相关 `openspec/specs/**`、项目入口文档、当前分支和工作区状态。
 - 只问会改变 proposal、执行路径、分支处理或归档结果的问题。
 - 当阶段规则冲突时，以当前阶段子 Skill 的停止条件为准。
+- 每个阶段子 Skill 定义了强制暂停 gate（如 `onespec-execute` 的"实现完成 Gate"、`onespec-design` 的"批准 Gate"）。路由进入下一阶段前，必须确认上一阶段的 gate 已完成。如果 gate 未完成就试图进入下一阶段，必须拒绝并指出缺失步骤。
