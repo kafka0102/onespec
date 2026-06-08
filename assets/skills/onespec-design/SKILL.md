@@ -83,6 +83,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 如果用户要求“给我看设计效果”、“给我看页面方案”、“出 UI / UX 方案”、“做视觉设计 / 视觉升级”、“出原型 / mockup / wireframe”、“浏览器里给我看效果”，或明确要求比较布局、样式、视觉方向，默认视为需要视觉化设计确认。
 - 出现这类诉求时，不要继续按纯文本澄清推进；只要当前 change 还没有被批准为固定视觉方案，就应路由到带 visual companion 的 brainstorming。
 - 涉及 mockup、wireframe、布局比较、视觉风格比较或页面效果确认时，先单独发送 visual companion offer，消息里不能混入其他内容；等待用户确认后，读取 `brainstorming/visual-companion.md`，启动本地 server，提供本地 URL，并给出第一版可视化方案。用户拒绝后，才允许继续纯文本 brainstorming。
+- 如果 `brainstorming/visual-companion.md` 不存在，或启动本地 server 所需依赖缺失，必须暂停，不允许临场伪造 visual companion 流程。此时只允许给用户两个明确选项：1. 补齐 visual companion 依赖后继续；2. 改成 `text-only` brainstorming。
 
 ## 3. Proposal 完成后的任务分析
 

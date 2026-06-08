@@ -87,6 +87,14 @@ Record the plan and create handoff:
 "$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> plan --write
 ```
 
+Before writing code, running native apply, or dispatching sub-work, move state into `phase implementing`:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase implementing
+```
+
+If the change is still in `approved` or `plan-ready`, implementation has not formally started yet. Do not treat incidental edits as "continued implementation".
+
 If `origin_branch` or `origin_workspace_path` is still `unknown`, fill them in immediately before creating a worktree, switching branches, or starting implementation:
 
 ```bash
@@ -122,7 +130,7 @@ After implementation and verification, the flow must pause. Do not continue dire
 - tell the user the current branch and current workspace path
 - if the current branch or workspace differs from `origin_branch` / `origin_workspace_path`, explicitly say that implementation now lives in a temporary branch or temporary worktree and the user should review there first
 - do not stop at an abstract note like "the next step is `onespec-archive`" or just "do review-closeout". Also give the user a numbered next-step menu.
-- report only implementation results, verification results, current branch/worktree status, and the numbered next-step menu for entering `onespec-archive` or staying in review
+- report only implementation results, verification results, current branch/worktree status, and the numbered next-step menu for entering user review or `onespec-archive`
 - never delete a temporary worktree before the user finishes review and explicitly requests closeout
 
 Report must cover:

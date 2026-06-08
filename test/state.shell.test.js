@@ -62,6 +62,58 @@ test('onespec-state initializes, updates, and recovers change state', async () =
   assert.match(state, /origin_branch: main/);
 });
 
+test('onespec-state rejects invalid enum values and illegal phase transitions', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+
+  await mkdir(path.join(projectPath, 'openspec', 'changes', 'guardrails'), { recursive: true });
+  await execFileAsync('bash', [scriptPath, 'init', 'guardrails'], { cwd: projectPath });
+
+  await assert.rejects(
+    execFileAsync('bash', [scriptPath, 'set', 'guardrails', 'implementation_path', 'maybe'], {
+      cwd: projectPath,
+    }),
+    /invalid value .*implementation_path/,
+  );
+  await assert.rejects(
+    execFileAsync('bash', [scriptPath, 'set', 'guardrails', 'phase', 'review'], {
+      cwd: projectPath,
+    }),
+    /illegal phase transition/,
+  );
+});
+
+test('onespec-state allows execution-oriented phase transitions and emits structured recovery hints', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+
+  await mkdir(path.join(projectPath, 'openspec', 'changes', 'ship-login'), { recursive: true });
+  await execFileAsync('bash', [scriptPath, 'init', 'ship-login'], { cwd: projectPath });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'proposal-ready'], {
+    cwd: projectPath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'approved'], {
+    cwd: projectPath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'plan-ready'], {
+    cwd: projectPath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'implementing'], {
+    cwd: projectPath,
+  });
+
+  const { stdout: recovery } = await execFileAsync(
+    'bash',
+    [scriptPath, 'recover', 'ship-login'],
+    { cwd: projectPath },
+  );
+
+  assert.match(recovery, /phase: implementing/);
+  assert.match(recovery, /next_skill: onespec-execute/);
+  assert.match(recovery, /next_gate: implementation-in-progress/);
+  assert.match(recovery, /allowed_actions: continue-implementation,update-tasks,run-tests/);
+});
+
 test('onespec-handoff creates deterministic compact context and records hash', async () => {
   const projectPath = await tmpProject();
   const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
@@ -100,6 +152,15 @@ test('onespec-state review recovery tells the user how to enter closeout', async
 
   await mkdir(path.join(projectPath, 'openspec', 'changes', 'archive-login'), { recursive: true });
   await execFileAsync('bash', [scriptPath, 'init', 'archive-login'], { cwd: projectPath });
+  await execFileAsync('bash', [scriptPath, 'set', 'archive-login', 'phase', 'proposal-ready'], {
+    cwd: projectPath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'archive-login', 'phase', 'approved'], {
+    cwd: projectPath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'archive-login', 'phase', 'implementing'], {
+    cwd: projectPath,
+  });
   await execFileAsync('bash', [scriptPath, 'set', 'archive-login', 'phase', 'review'], {
     cwd: projectPath,
   });
@@ -111,5 +172,7 @@ test('onespec-state review recovery tells the user how to enter closeout', async
   );
 
   assert.match(recovery, /进入 `onespec-archive`/);
-  assert.match(recovery, /输入 `进入收尾`/);
+  assert.match(recovery, /next_skill: onespec-archive/);
+  assert.match(recovery, /next_gate: user-review-closeout/);
+  assert.match(recovery, /allowed_actions: review,request-changes,choose-closeout-menu/);
 });

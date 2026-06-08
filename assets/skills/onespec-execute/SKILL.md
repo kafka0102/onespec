@@ -87,6 +87,14 @@ apply 前至少读取：
 "$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> plan --write
 ```
 
+在真正开始写代码、运行原生 apply 或派发子任务前，必须先把状态切到 `implementing`：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase implementing
+```
+
+如果还停留在 `approved` 或 `plan-ready`，说明实现尚未正式开始；此时不允许把中途代码编辑误报为“继续实现”。
+
 如果 `origin_branch` 或 `origin_workspace_path` 仍是 `unknown`，则在真正创建 worktree、切换 branch 或开始实现前立即补记当前上下文：
 
 ```bash
@@ -179,7 +187,7 @@ apply 前至少读取：
 📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
 
 1. 我先在当前分支 / worktree review 代码和验证结果，暂不收尾
-2. 进入 `onespec-archive` 收尾流程，继续选择 `PR/MR`、本地合并、保留分支或 archive
+2. 进入 `onespec-archive` 收尾流程，继续选择本地合并、保留分支或 archive
 3. 根据我的反馈继续修改当前实现；我会补充问题或期望
 4. 保持当前分支 / worktree 不变，先停在这里，稍后再继续
 其他：如果意图不在以上选项里，可以直接补充说明

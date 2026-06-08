@@ -28,6 +28,7 @@ If a relevant change exists, run:
 ```
 
 State file: `openspec/changes/<change-id>/.onespec.yaml`. Handoff directory: `openspec/changes/<change-id>/.onespec/handoff/`. Prefer `*-context.md`; only regenerate handoff when state or hashes changed.
+Treat `recover` output as an execution contract, not a hint. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding what to do next.
 
 ## Phase Routing
 
@@ -53,3 +54,4 @@ Default intent mapping:
 - Read the minimum necessary context: `openspec/config.yaml`, `openspec/project.md`, relevant `openspec/specs/**`, project entry docs, and current branch/worktree state.
 - Only ask questions that can change the proposal, execution path, branch handling, or archive result.
 - If shared and phase-specific rules conflict, the child skill for the current phase wins.
+- If `recover` already points to a `next_skill`, resume there by default. Only override it when the user explicitly changes phase and the previous phase gate is already complete.

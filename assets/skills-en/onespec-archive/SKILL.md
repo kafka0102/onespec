@@ -39,7 +39,7 @@ Let the user review the implementation. If they raise issues, continue editing a
 
 If the user confirms the result, do not require words like `continue`, `yes`, or `approve closeout`. Show a numbered closeout menu and let the user reply with digits. If the user's intent is not covered, allow free-form instructions.
 
-Do not make the user guess what to type next. When entering `onespec-archive`, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `3,5`.
+Do not make the user guess what to type next. When entering `onespec-archive`, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `2,4`.
 
 Before offering closeout choices, explicitly tell the user:
 
@@ -53,10 +53,10 @@ If the current branch or workspace differs from the recorded `origin_*` fields, 
 Supported closeout paths:
 
 - local merge: switch to the target branch (default to `origin_branch` unless the project defines a different target), merge, test, then delete feature branch and worktree
-- PR/MR: guide the user to push the branch and create a `PR` or `MR`. If the remote is clearly GitHub, use `PR`; if GitLab, use `MR`; otherwise say `PR/MR`.
 - preserve: do not merge and do not delete; state may still move to `done`
+- run archive: only allowed after the code is truly on the target branch
 
-Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Merge, PR/MR, and deletion are consequential actions and require an explicit user choice.
+Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Merge, deletion, and archive are consequential actions and require an explicit user choice.
 
 ## 2.1 Superpowers Worktree Priority
 
@@ -80,7 +80,7 @@ By default, "delete branch" here means only the local temporary branch.
 
 ## 2.2 Multi-Select Closeout Combinations
 
-Do not model closeout as a pure single-choice menu anymore. At minimum, make these two actions combinable. Use numbered combinations such as `3,5`:
+Do not model closeout as a pure single-choice menu anymore. At minimum, make these two actions combinable. Use numbered combinations such as `2,4`:
 
 - `merge branch`
 - `run archive`
@@ -107,20 +107,18 @@ Default recommended combinations:
 The user-facing closeout menu should include at least:
 
 1. continue reviewing on the current implementation branch and do not close out yet
-2. push the current branch and create a `PR` / `MR`
-3. merge locally back to the target branch and delete the temporary branch / worktree
-4. preserve the current branch and worktree for later
-5. if code is already truly on the target branch, run archive
+2. merge locally back to the target branch and delete the temporary branch / worktree
+3. preserve the current branch and worktree for later
+4. if code is already truly on the target branch, run archive
 Other: if the user's intent is not covered, allow free-form instructions
 
 Menu handling rules:
 
 - reply `1`: stay in review and do not close out
-- reply `2`: enter the push-and-create-`PR/MR` flow
-- reply `3`: enter the local-merge and cleanup flow
-- reply `4`: preserve the current state, mark `done` or keep it resumable, and wait for later
-- reply `5`: run archive only when archive prerequisites are satisfied; otherwise explain the blocker
-- reply with multiple digits, such as `3,5`: validate the combination and execute it in order if valid; otherwise explain the conflict explicitly
+- reply `2`: enter the local-merge and cleanup flow
+- reply `3`: confirm preserving the current branch and worktree, mark `done` or keep it resumable, and wait for later
+- reply `4`: run archive only when archive prerequisites are satisfied; otherwise explain the blocker
+- reply with multiple digits, such as `2,4`: validate the combination and execute it in order if valid; otherwise explain the conflict explicitly
 - free-form text instead of digits: if intent is clear, follow it; otherwise ask one minimal clarification question
 
 ## 3. Archive Rules
@@ -149,6 +147,8 @@ Before archive, merge, or preserve closeout is finalized, always check whether t
 - if the project defines an explicit policy, follow it
 - if the project does not define a policy, fall back to general Conventional Commits: `<type>(<scope>): <short summary>`
 - only commit the intersection of `touched-files.txt` and current dirty files; never include unrelated changes
+- before actually merging, require one more explicit user confirmation to confirm local merge
+- before leaving the code unmerged, require one more explicit user confirmation to confirm preserving the current branch and worktree
 
 - If code is merged into the target branch and the user chooses archive, run OpenSpec archive and set state to `archived`.
 - If the user does not archive, or implementation is still only in a preserved branch, set state to `done` and explain that archive can be run later.

@@ -28,6 +28,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 ```
 
 状态文件位置：`openspec/changes/<change-id>/.onespec.yaml`。上下文包位置：`openspec/changes/<change-id>/.onespec/handoff/`。优先读取 `*-context.md`，只在状态或哈希变化时重新生成 handoff。
+`recover` 的输出不是参考信息，而是恢复后的执行合同。至少要读取其中的 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，然后再决定是否继续。
 
 ## 阶段路由
 
@@ -54,3 +55,4 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 只问会改变 proposal、执行路径、分支处理或归档结果的问题。
 - 当阶段规则冲突时，以当前阶段子 Skill 的停止条件为准。
 - 每个阶段子 Skill 定义了强制暂停 gate（如 `onespec-execute` 的"实现完成 Gate"、`onespec-design` 的"批准 Gate"）。路由进入下一阶段前，必须确认上一阶段的 gate 已完成。如果 gate 未完成就试图进入下一阶段，必须拒绝并指出缺失步骤。
+- 如果 `recover` 已经给出 `next_skill`，默认先按它恢复；只有在用户当前请求明确改变阶段，且上一阶段的 gate 已完成时，才允许覆盖该恢复结果。

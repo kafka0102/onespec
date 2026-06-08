@@ -34,6 +34,8 @@ test('onespec router combines the three phase skills without duplicating phase d
     'onespec-execute',
     'onespec-archive',
     '恢复优先',
+    'next_skill',
+    '上一阶段的 gate 已完成',
     'propose',
     'apply',
     'review-closeout',
@@ -55,6 +57,8 @@ test('onespec-design documents proposal and approval routing guardrails', async 
     '开始实现',
     'make plan',
     'visual companion',
+    '如果 `brainstorming/visual-companion.md` 不存在',
+    '`text-only`',
     'rollout / migration / compatibility',
     'non-goals',
     '只有用户明确批准 proposal / design / spec 后，才允许进入实现计划',
@@ -74,6 +78,7 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     '默认不是“直接实现”，而是先把已批准的 OpenSpec change 翻译成 Superpowers 可执行计划',
     'touched-files.txt',
     '"$ONESPEC_BASH" "$ONESPEC_COMMIT" track <change-id> <path>...',
+    '"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase implementing',
     'origin_branch',
     'origin_workspace_path',
     '优先使用 `subagent-driven-development`',
@@ -81,7 +86,7 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     '不允许实现结果与已批准 OpenSpec 范围静默漂移',
     '必须明确暂停',
     'review-closeout',
-    '进入收尾',
+    '进入用户评审',
     '不要只停在“下一步应进入 `onespec-archive`”',
     'openspec validate <change-id> --strict',
   ]) {
@@ -104,7 +109,7 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     '本地合并',
     '保留分支',
     '确认本地合并',
-    '确认保留分支',
+    '确认保留当前分支与 worktree',
     '执行归档',
     '当前分支名',
     'origin_branch',
@@ -137,4 +142,7 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   expectIncludes(await readEnglishSkill('onespec-design'), '# OneSpec Design');
   expectIncludes(await readEnglishSkill('onespec-execute'), '# OneSpec Execute');
   expectIncludes(await readEnglishSkill('onespec-archive'), '# OneSpec Archive');
+  expectIncludes(await readEnglishSkill('onespec-design'), 'text-only');
+  expectIncludes(await readEnglishSkill('onespec-execute'), 'phase implementing');
+  expectIncludes(await readEnglishSkill('onespec-archive'), 'confirm local merge');
 });
