@@ -8,6 +8,26 @@ OneSpec 是一个给 Codex 使用的 skill 包，用来执行 OpenSpec + Superpo
 
 任选一种方式安装。
 
+### 通过 `npm install -g`
+
+先全局安装 CLI：
+
+```bash
+npm install -g @kafka0102/onespec
+```
+
+然后把 OneSpec skill 安装到 Codex：
+
+```bash
+onespec init --scope global --yes
+```
+
+如果你只想装到当前项目：
+
+```bash
+onespec init . --scope project --yes
+```
+
 ### 通过 `npx`
 
 如果你已经把包发布到 npm：
@@ -34,7 +54,10 @@ npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills -a c
 
 ## 使用
 
-安装后重启 Codex，然后在任务里调用 OneSpec skills 即可。
+`npm install -g @kafka0102/onespec` 只会安装 `onespec` 这个 CLI。
+真正把 skill 复制到 Codex 目录的是 `onespec init` 这一步。
+
+执行完 `onespec init` 后，重启 Codex，然后在任务里调用 OneSpec skills 即可。
 
 ## 发布
 

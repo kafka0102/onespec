@@ -19,11 +19,13 @@
   "files": [
     "assets",
     "bin",
-    "src"
+    "src",
+    "scripts/postinstall.js"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",
-    "test:shell": "node --test test/*.shell.test.js"
+    "test:shell": "node --test test/*.shell.test.js",
+    "postinstall": "node scripts/postinstall.js"
   },
   "engines": {
     "node": ">=20"

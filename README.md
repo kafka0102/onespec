@@ -8,6 +8,26 @@ OneSpec is a Codex skill package for running an OpenSpec + Superpowers workflow.
 
 Use one of these installation methods.
 
+### Via `npm install -g`
+
+Install the CLI globally:
+
+```bash
+npm install -g @kafka0102/onespec
+```
+
+Then install the bundled skills into Codex:
+
+```bash
+onespec init --scope global --yes
+```
+
+Or install into the current project only:
+
+```bash
+onespec init . --scope project --yes
+```
+
 ### Via `npx`
 
 If you publish the package to npm:
@@ -34,7 +54,10 @@ The `skills` CLI does not parse `owner/repo/tree/<ref>/...` shorthand correctly.
 
 ## Use
 
-After installation, restart Codex and invoke the OneSpec skills in your task.
+`npm install -g @kafka0102/onespec` only installs the `onespec` CLI.
+`onespec init` is the step that copies the bundled skills into Codex.
+
+After `onespec init`, restart Codex and invoke the OneSpec skills in your task.
 
 ## Release
 
