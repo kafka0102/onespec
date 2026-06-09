@@ -33,6 +33,8 @@ Read the minimum necessary context:
 
 If state has not reached `review`, explain what is still missing: implementation, verification, `tasks.md` sync, or proposal approval.
 
+Entry validation: if phase is already `review` but `.onespec.yaml` does not show `handoff_purpose: review` or does not have a `handoff_hash`, treat that as an incomplete execute gate. Tell the user the review handoff state was not written back and send them to re-run the execute report instead of silently continuing.
+
 ## 2. User Review
 
 Let the user review the implementation. If they raise issues, continue editing and re-verify.
@@ -130,7 +132,7 @@ Before archive, merge, or preserve closeout is finalized, always check whether t
 ```
 
 - if the result is empty, continue with closeout
-- if the result is empty, unrelated untracked directories must not block closeout; for example, `.superpowers/` that is not recorded in `touched-files.txt` can be called out as "not included in this change" and then ignored for closeout purposes
+- if the result is empty, unrelated untracked directories must not block closeout; for example, `.superpowers/` that is not recorded in the tracked-file list inside `.onespec.yaml` can be called out as "not included in this change" and then ignored for closeout purposes
 - if the result is not empty, explicitly tell the user which change-related files are still uncommitted and pause archive
 - if the user wants to commit now, stage only the files related to this change:
 
@@ -146,12 +148,17 @@ Before archive, merge, or preserve closeout is finalized, always check whether t
 
 - if the project defines an explicit policy, follow it
 - if the project does not define a policy, fall back to general Conventional Commits: `<type>(<scope>): <short summary>`
-- only commit the intersection of `touched-files.txt` and current dirty files; never include unrelated changes
+- only commit the intersection of the tracked-file list stored in `.onespec.yaml` and current dirty files; if `.onespec.yaml` itself is dirty, include it too; never include unrelated changes
 - before actually merging, require one more explicit user confirmation to confirm local merge
 - before leaving the code unmerged, require one more explicit user confirmation to confirm preserving the current branch and worktree
 
 - If code is merged into the target branch and the user chooses archive, run OpenSpec archive and set state to `archived`.
-- If the user does not archive, or implementation is still only in a preserved branch, set state to `done` and explain that archive can be run later.
+- If the user does not archive, or implementation is still only in a preserved branch, set state to `done` and explain that archive can be run later. Do not delete `.onespec.yaml` in that case.
+- Only after archive actually runs should the runtime state file be removed:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" cleanup-runtime <change-id>
+```
 
 Once archive preconditions are satisfied and code is truly merged into the target branch, require one more explicit archive command before actually archiving. Recommended wording:
 

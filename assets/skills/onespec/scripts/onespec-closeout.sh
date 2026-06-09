@@ -248,12 +248,25 @@ origin_branch: $origin_branch
 EOF
 }
 
+cmd_cleanup_runtime() {
+  local change="$1"
+  valid_change "$change"
+
+  local file
+  file="$(state_file "$change")"
+  if [ -f "$file" ]; then
+    rm -f "$file"
+    echo "$file"
+  fi
+}
+
 usage() {
   cat <<'EOF'
 用法:
   onespec-closeout.sh inspect <change>
   onespec-closeout.sh recommend-actions <change>
   onespec-closeout.sh validate-actions <change> [merge] [archive]
+  onespec-closeout.sh cleanup-runtime <change>
 EOF
 }
 
@@ -271,6 +284,10 @@ case "$cmd" in
     [ "$#" -ge 2 ] || { usage; exit 2; }
     shift
     cmd_validate_actions "$@"
+    ;;
+  cleanup-runtime)
+    [ "$#" -eq 2 ] || { usage; exit 2; }
+    cmd_cleanup_runtime "$2"
     ;;
   *)
     usage

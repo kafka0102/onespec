@@ -24,14 +24,9 @@ change_dir() {
   fi
 }
 
-meta_dir() {
+state_file() {
   local change="$1"
-  printf '%s/.onespec\n' "$(change_dir "$change")"
-}
-
-touched_file() {
-  local change="$1"
-  printf '%s/touched-files.txt\n' "$(meta_dir "$change")"
+  printf '%s/.onespec.yaml\n' "$(change_dir "$change")"
 }
 
 normalize_path() {
@@ -46,6 +41,68 @@ normalize_path() {
 
 sort_unique_lines() {
   awk 'NF && !seen[$0]++ { print $0 }'
+}
+
+field_value() {
+  local file="$1"
+  local key="$2"
+  awk -F ': *' -v key="$key" '$1 == key { sub(/^[^:]+: */, ""); print; found=1; exit } END { if (!found) exit 0 }' "$file" 2>/dev/null
+}
+
+set_field() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp
+  tmp="$(mktemp)"
+  if grep -q "^${key}:" "$file"; then
+    awk -v key="$key" -v value="$value" '
+      $0 ~ "^" key ":" { print key ": " value; next }
+      { print }
+    ' "$file" > "$tmp"
+  else
+    cat "$file" > "$tmp"
+    printf '%s: %s\n' "$key" "$value" >> "$tmp"
+  fi
+  mv "$tmp" "$file"
+}
+
+encode_base64() {
+  base64 | tr -d '\n'
+}
+
+decode_base64() {
+  if base64 --help >/dev/null 2>&1; then
+    base64 --decode 2>/dev/null || base64 -d 2>/dev/null || base64 -D
+  else
+    base64 -d 2>/dev/null || base64 -D
+  fi
+}
+
+load_tracked_lines() {
+  local change="$1"
+  local file encoded
+  file="$(state_file "$change")"
+  [ -f "$file" ] || return 0
+  encoded="$(field_value "$file" touched_files_b64)"
+  if [ -z "$encoded" ] || [ "$encoded" = "null" ]; then
+    return 0
+  fi
+  printf '%s' "$encoded" | decode_base64
+}
+
+save_tracked_lines() {
+  local change="$1"
+  local file="$2"
+  local state encoded
+  state="$(state_file "$change")"
+  [ -f "$state" ] || die "state not found: $state"
+  if [ ! -s "$file" ]; then
+    set_field "$state" touched_files_b64 "null"
+    return 0
+  fi
+  encoded="$(encode_base64 < "$file")"
+  set_field "$state" touched_files_b64 "$encoded"
 }
 
 ensure_git_repo() {
@@ -174,8 +231,10 @@ infer_scope() {
     return 0
   fi
 
-  tracked="$(touched_file "$change")"
-  if [ ! -f "$tracked" ] || [ ! -s "$tracked" ]; then
+  tracked="$(mktemp)"
+  load_tracked_lines "$change" > "$tracked"
+  if [ ! -s "$tracked" ]; then
+    rm -f "$tracked"
     echo "repo"
     return 0
   fi
@@ -212,6 +271,7 @@ infer_scope() {
       }
     }
   ' "$tracked"
+  rm -f "$tracked"
 }
 
 cmd_track() {
@@ -220,34 +280,26 @@ cmd_track() {
   valid_change "$change"
   [ "$#" -gt 0 ] || die "track requires at least one path"
 
-  local dir tracked tmp path
-  dir="$(meta_dir "$change")"
-  tracked="$(touched_file "$change")"
-  mkdir -p "$dir"
+  local tracked tmp path
+  tracked="$(mktemp)"
   tmp="$(mktemp)"
 
-  if [ -f "$tracked" ]; then
-    cat "$tracked" > "$tmp"
-  fi
+  load_tracked_lines "$change" > "$tmp"
 
   for path in "$@"; do
     normalize_path "$path" >> "$tmp"
   done
 
   sort_unique_lines < "$tmp" > "$tracked"
-  rm -f "$tmp"
+  save_tracked_lines "$change" "$tracked"
   cat "$tracked"
+  rm -f "$tmp" "$tracked"
 }
 
 cmd_tracked() {
   local change="$1"
   valid_change "$change"
-
-  local tracked
-  tracked="$(touched_file "$change")"
-  if [ -f "$tracked" ]; then
-    cat "$tracked"
-  fi
+  load_tracked_lines "$change"
 }
 
 cmd_related_dirty() {
@@ -255,13 +307,24 @@ cmd_related_dirty() {
   valid_change "$change"
   ensure_git_repo
 
-  local tracked
-  tracked="$(touched_file "$change")"
-  if [ ! -f "$tracked" ] || [ ! -s "$tracked" ]; then
+  local tracked state dirty
+  tracked="$(mktemp)"
+  dirty="$(mktemp)"
+  load_tracked_lines "$change" > "$tracked"
+  state="$(state_file "$change")"
+  git_dirty_paths | sort_unique_lines > "$dirty"
+
+  if grep -Fxq "$state" "$dirty"; then
+    printf '%s\n' "$state" >> "$tracked"
+  fi
+
+  if [ ! -s "$tracked" ]; then
+    rm -f "$tracked" "$dirty"
     return 0
   fi
 
-  awk 'NR==FNR { dirty[$0] = 1; next } dirty[$0] { print $0 }' <(git_dirty_paths | sort_unique_lines) "$tracked"
+  awk 'NR==FNR { dirty[$0] = 1; next } dirty[$0] { print $0 }' "$dirty" "$tracked" | sort_unique_lines
+  rm -f "$tracked" "$dirty"
 }
 
 cmd_stage_related() {

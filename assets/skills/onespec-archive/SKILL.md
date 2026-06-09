@@ -33,7 +33,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 如果状态尚未到 `review`，先说明缺少什么：未实现、未验证、未回填 `tasks.md`，或 proposal 尚未批准。
 
-入口校验：如果 phase 已到 `review` 但 handoff 文件 `openspec/changes/<change-id>/.onespec/handoff/review-context.md` 不存在，说明 execute gate 可能未正常完成。此时必须告诉用户："执行阶段的 review handoff 未生成，建议先回到执行阶段补充汇报（回复 `补充汇报` 或重新触发 execute gate）。" 不允许静默跳过。
+入口校验：如果 phase 已到 `review`，但 `.onespec.yaml` 里的 `handoff_purpose` 不是 `review`，或 `handoff_hash` 为空，说明 execute gate 可能未正常完成。此时必须告诉用户："执行阶段的 review handoff 状态未写回，建议先回到执行阶段补充汇报（回复 `补充汇报` 或重新触发 execute gate）。" 不允许静默跳过。
 
 ## 2. 用户评审
 
@@ -132,7 +132,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 ```
 
 - 如果结果为空，继续后续收尾。
-- 如果结果为空，即使工作区里还有无关未跟踪目录，也不要阻塞收尾；例如未记录到 `touched-files.txt` 的 `.superpowers/` 可以明确说明“未纳入本次提交”，但不应视为本次 change 的阻塞项。
+- 如果结果为空，即使工作区里还有无关未跟踪目录，也不要阻塞收尾；例如未记录到 `.onespec.yaml` tracked file 列表里的 `.superpowers/` 可以明确说明“未纳入本次提交”，但不应视为本次 change 的阻塞项。
 - 如果结果非空，先向用户明确提示这些文件尚未提交，并暂停归档。
 - 若用户要求现在提交，只能 stage 本次 change 相关文件：
 
@@ -148,11 +148,16 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 - 如果项目里存在明确规范，按项目要求处理 commit message 的格式、scope 和语言。
 - 如果项目里没有明确规范，回退到通用 Conventional Commits：`<type>(<scope>): <简要描述>`。
-- 只能提交 `touched-files.txt` 与当前脏文件的交集，不允许把无关改动一并提交。
+- 只能提交 `.onespec.yaml` 中记录的 tracked files 与当前脏文件的交集；如果 `.onespec.yaml` 本身是脏的，也应一并提交，不允许把无关改动一并提交。
 - 真正执行本地合并前，必须再次获得用户对“确认本地合并”的明确同意。
 
 - 如果代码已合并到目标分支且用户选择归档，执行 OpenSpec archive，并将状态设为 `archived`。
-- 如果用户不归档，或实现仍停留在保留分支上，将状态设为 `done`，并提示之后可再运行归档。
+- 如果用户不归档，或实现仍停留在保留分支上，将状态设为 `done`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
+- 只有真正执行 archive 后，才删除运行时状态文件：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" cleanup-runtime <change-id>
+```
 
 已经满足归档前置条件且代码确实已经合并到目标分支后，如需真的执行归档，必须再次要求用户给出明确指令，推荐使用：
 

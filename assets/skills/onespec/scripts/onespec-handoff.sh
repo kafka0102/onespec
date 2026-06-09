@@ -76,47 +76,6 @@ write_excerpt() {
   echo
 }
 
-write_markdown() {
-  {
-    echo "# OneSpec 交接包"
-    echo
-    echo "- change: $change"
-    echo "- purpose: $purpose"
-    echo "- mode: $mode"
-    echo "- hash: $hash"
-    echo
-    echo "Generated-by: onespec-handoff.sh"
-    echo
-    echo "这是脚本生成的确定性交接上下文。OpenSpec 产物仍是事实来源。"
-    echo
-    source_files | while IFS= read -r file; do
-      write_excerpt "$file"
-    done
-  } > "$context_md"
-}
-
-write_json() {
-  {
-    echo "{"
-    echo "  \"change\": \"$(json_escape "$change")\","
-    echo "  \"purpose\": \"$(json_escape "$purpose")\","
-    echo "  \"mode\": \"$(json_escape "$mode")\","
-    echo "  \"hash\": \"$hash\","
-    echo "  \"files\": ["
-    local first=1
-    while IFS= read -r file; do
-      if [ "$first" -eq 0 ]; then
-        echo ","
-      fi
-      first=0
-      printf '    { "path": "%s", "sha256": "%s" }' "$(json_escape "$file")" "$(hash_file "$file")"
-    done < <(source_files)
-    echo
-    echo "  ]"
-    echo "}"
-  } > "$context_json"
-}
-
 change="${1:-}"
 purpose="${2:-}"
 action="${3:-}"
@@ -136,17 +95,11 @@ if [ "$(source_files | wc -l | tr -d ' ')" -eq 0 ]; then
   die "no OpenSpec artifacts found under $change_dir"
 fi
 
-handoff_dir="$change_dir/.onespec/handoff"
-mkdir -p "$handoff_dir"
-context_md="$handoff_dir/${purpose}-context.md"
-context_json="$handoff_dir/${purpose}-context.json"
 hash="$(context_hash)"
 
-write_markdown
-write_json
-
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
-"${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_context "$context_json"
+"${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_context "$state"
+"${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_purpose "$purpose"
 "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_hash "$hash"
 
-echo "$context_md"
+echo "$state"

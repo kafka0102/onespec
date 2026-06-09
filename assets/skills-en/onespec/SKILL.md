@@ -27,7 +27,7 @@ If a relevant change exists, run:
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-State file: `openspec/changes/<change-id>/.onespec.yaml`. Handoff directory: `openspec/changes/<change-id>/.onespec/handoff/`. Prefer `*-context.md`; only regenerate handoff when state or hashes changed.
+State file: `openspec/changes/<change-id>/.onespec.yaml`. This is the only runtime temporary file for OneSpec; handoff summary, hashes, and touched-file tracking all live there. Keep it until archive actually happens, then delete it during archive cleanup.
 Treat `recover` output as an execution contract, not a hint. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding what to do next.
 
 ## Phase Routing

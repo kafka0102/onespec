@@ -16,6 +16,11 @@ async function git(projectPath, args, options = {}) {
   return execFileAsync('git', args, { cwd: projectPath, ...options });
 }
 
+async function initChangeState(projectPath, change) {
+  const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+  await execFileAsync('bash', [stateScriptPath, 'init', change], { cwd: projectPath });
+}
+
 test('onespec-commit tracks touched files and stages only related dirty files', async () => {
   const projectPath = await tmpProject();
   const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
@@ -27,6 +32,7 @@ test('onespec-commit tracks touched files and stages only related dirty files', 
   await git(projectPath, ['init']);
   await git(projectPath, ['add', 'src/app.js', 'README.md']);
   await git(projectPath, ['-c', 'user.name=Test User', '-c', 'user.email=test@example.com', 'commit', '-m', 'init']);
+  await initChangeState(projectPath, 'add-login');
 
   await execFileAsync('bash', [scriptPath, 'track', 'add-login', 'src/app.js'], { cwd: projectPath });
   await writeFile(path.join(projectPath, 'src', 'app.js'), 'console.log("v2");\n');
@@ -36,20 +42,26 @@ test('onespec-commit tracks touched files and stages only related dirty files', 
     cwd: projectPath,
   });
 
-  assert.deepEqual(related.trim().split('\n'), ['src/app.js']);
+  assert.deepEqual(related.trim().split('\n').sort(), [
+    'openspec/changes/add-login/.onespec.yaml',
+    'src/app.js',
+  ]);
 
   await execFileAsync('bash', [scriptPath, 'stage-related', 'add-login'], { cwd: projectPath });
   const { stdout: status } = await git(projectPath, ['status', '--porcelain=v1']);
   const lines = status.trim().split('\n');
 
+  assert.ok(lines.includes('A  openspec/changes/add-login/.onespec.yaml'));
   assert.ok(lines.includes('M  src/app.js'));
   assert.ok(lines.includes('?? notes.txt'));
 
-  const tracked = await readFile(
-    path.join(projectPath, 'openspec', 'changes', 'add-login', '.onespec', 'touched-files.txt'),
+  const state = await readFile(
+    path.join(projectPath, 'openspec', 'changes', 'add-login', '.onespec.yaml'),
     'utf8',
   );
-  assert.equal(tracked.trim(), 'src/app.js');
+  const encoded = state.match(/^touched_files_b64: (.+)$/m)?.[1];
+  assert.ok(encoded);
+  assert.equal(Buffer.from(encoded, 'base64').toString('utf8').trim(), 'src/app.js');
 });
 
 test('onespec-commit detects project commit policy before falling back to defaults', async () => {
@@ -73,6 +85,7 @@ test('onespec-commit detects project commit policy before falling back to defaul
     ].join('\n'),
   );
 
+  await initChangeState(projectPath, 'add-login');
   await execFileAsync('bash', [scriptPath, 'track', 'add-login', 'packages/web/src/index.ts'], {
     cwd: projectPath,
   });

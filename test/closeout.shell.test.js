@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -155,4 +155,21 @@ test('onespec-closeout validate-actions rejects archive without merge from a tem
   assert.match(stdout, /selected_actions: archive/);
   assert.match(stdout, /valid: false/);
   assert.match(stdout, /不能单独执行归档：当前代码尚未确认位于目标分支。/);
+});
+
+test('onespec-closeout cleanup-runtime removes the single runtime state file only when requested', async () => {
+  const projectPath = await tmpProject();
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const statePath = path.join(projectPath, 'openspec', 'changes', 'cleanup-login', '.onespec.yaml');
+
+  await initGitRepo(projectPath);
+  await initChangeState(projectPath, 'cleanup-login');
+  await access(statePath);
+
+  const { stdout } = await execFileAsync('bash', [closeoutScriptPath, 'cleanup-runtime', 'cleanup-login'], {
+    cwd: projectPath,
+  });
+
+  assert.equal(stdout.trim(), 'openspec/changes/cleanup-login/.onespec.yaml');
+  await assert.rejects(access(statePath));
 });

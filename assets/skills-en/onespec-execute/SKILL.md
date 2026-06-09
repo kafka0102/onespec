@@ -71,13 +71,14 @@ Must do:
 - ensure the plan covers every incomplete OpenSpec task; it may split tasks further but may not omit or expand scope
 - if a matching plan already exists, verify that it still covers the current incomplete tasks; update or rewrite it otherwise
 - if the plan conflicts with approved OpenSpec artifacts, fix the OpenSpec artifacts first, then rewrite the plan
-- from the start of implementation until review, maintain `openspec/changes/<change-id>/.onespec/touched-files.txt` with only the repo-relative paths that were directly changed for this change; prefer:
+- from the start of implementation until review, maintain `openspec/changes/<change-id>/.onespec.yaml` as the only runtime state file; store only the repo-relative paths directly changed for this change in its `touched_files_b64` field; prefer:
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_COMMIT" track <change-id> <path>...
 ```
 
-- do not add pre-existing dirty files that are unrelated to the current change into `touched-files.txt`
+- do not add pre-existing dirty files that are unrelated to the current change into that tracked-file list
+- if auto-commit happens later, `.onespec.yaml` itself must be committed with the change while it is dirty; it is not a disposable file before archive
 
 Record the plan and create handoff:
 

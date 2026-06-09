@@ -27,7 +27,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-状态文件位置：`openspec/changes/<change-id>/.onespec.yaml`。上下文包位置：`openspec/changes/<change-id>/.onespec/handoff/`。优先读取 `*-context.md`，只在状态或哈希变化时重新生成 handoff。
+状态文件位置：`openspec/changes/<change-id>/.onespec.yaml`。这是 OneSpec 唯一的运行时临时文件；handoff 摘要、哈希和 touched files 都写回这个文件。只要用户还没 archive，就保留它；真正 archive 后再删除。
 `recover` 的输出不是参考信息，而是恢复后的执行合同。至少要读取其中的 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，然后再决定是否继续。
 
 ## 阶段路由

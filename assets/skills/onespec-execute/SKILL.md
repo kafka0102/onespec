@@ -71,13 +71,14 @@ apply 前至少读取：
 - 计划必须覆盖每个未完成 OpenSpec task，可拆细，但不得遗漏或扩大范围。
 - 如果已有对应 plan，先检查它是否仍覆盖当前未完成 tasks；不覆盖就更新或重写。
 - 如果 plan 与 OpenSpec artifacts 冲突，先修正 OpenSpec artifacts，再重写 plan。
-- 从开始实现到进入 review 之前，为当前 change 维护 `openspec/changes/<change-id>/.onespec/touched-files.txt`，只记录本次任务直接修改的仓库相对路径。优先使用：
+- 从开始实现到进入 review 之前，为当前 change 维护 `openspec/changes/<change-id>/.onespec.yaml` 这个唯一运行时状态文件；本次直接修改的仓库相对路径写入其中的 `touched_files_b64`。优先使用：
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_COMMIT" track <change-id> <path>...
 ```
 
-- 不要把用户原本就存在但不属于本次 change 的脏文件写入 `touched-files.txt`。
+- 不要把用户原本就存在但不属于本次 change 的脏文件写入这个 tracked file 列表。
+- 后续如果进入自动提交，`.onespec.yaml` 本身也应随当前 change 一起提交；它不是要提前删除的中间产物，而是 review / archive 前的恢复依据。
 
 记录计划并创建交接包：
 

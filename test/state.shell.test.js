@@ -114,7 +114,7 @@ test('onespec-state allows execution-oriented phase transitions and emits struct
   assert.match(recovery, /allowed_actions: continue-implementation,update-tasks,run-tests/);
 });
 
-test('onespec-handoff creates deterministic compact context and records hash', async () => {
+test('onespec-handoff records deterministic review state in the single runtime file', async () => {
   const projectPath = await tmpProject();
   const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
   const handoffScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-handoff.sh');
@@ -130,19 +130,15 @@ test('onespec-handoff creates deterministic compact context and records hash', a
   );
 
   await execFileAsync('bash', [stateScriptPath, 'init', 'add-login'], { cwd: projectPath });
-  await execFileAsync('bash', [handoffScriptPath, 'add-login', 'proposal', '--write'], {
+  const { stdout } = await execFileAsync('bash', [handoffScriptPath, 'add-login', 'proposal', '--write'], {
     cwd: projectPath,
   });
 
-  const context = await readFile(
-    path.join(changeDir, '.onespec', 'handoff', 'proposal-context.md'),
-    'utf8',
-  );
   const state = await readFile(path.join(changeDir, '.onespec.yaml'), 'utf8');
 
-  assert.match(context, /Generated-by: onespec-handoff.sh/);
-  assert.match(context, /openspec\/changes\/add-login\/proposal.md/);
-  assert.match(state, /handoff_context: openspec\/changes\/add-login\/.onespec\/handoff\/proposal-context.json/);
+  assert.equal(stdout.trim(), path.join('openspec', 'changes', 'add-login', '.onespec.yaml'));
+  assert.match(state, /handoff_context: openspec\/changes\/add-login\/.onespec.yaml/);
+  assert.match(state, /handoff_purpose: proposal/);
   assert.match(state, /handoff_hash: [a-f0-9]{64}/);
 });
 
