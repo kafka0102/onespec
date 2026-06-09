@@ -66,10 +66,10 @@ npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills -a c
 
 1. 在仓库 Secrets 中添加 `NPM_TOKEN`，它需要有发布 `@kafka0102/onespec` 的权限。
 2. 更新 `package.json` 里的版本号。
-3. 创建并推送对应版本标签，例如 `v0.1.1`。
+3. 创建并推送对应版本标签，例如 `v0.1.2`。
 
 ```bash
-git tag v0.1.1
+git tag v0.1.2
 git push origin main --tags
 ```
 
