@@ -1,11 +1,11 @@
 ---
 name: onespec-archive
-description: 当用户需要对 OneSpec change 做最终评审、处理反馈、合并、保留分支、处理 worktree 或执行 OpenSpec archive 时使用。
+description: 当用户需要对 OneSpec change 做最终评审、处理反馈、删除 worktree 或执行 OpenSpec archive 时使用。
 ---
 
 # OneSpec Archive
 
-用于 OneSpec 的评审、收尾与归档阶段。目标是在用户确认后处理分支/worktree与 OpenSpec archive，不默认执行有后果的操作。
+用于 OneSpec 的评审、收尾与归档阶段。目标是在用户确认后执行删除 worktree 与 OpenSpec archive，不默认执行有后果的操作。
 
 开始时说明：
 
@@ -20,6 +20,14 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 . "$ONESPEC_ENV"
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```
+
+如果发现相关 change，必须继续执行：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
+```
+
+`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，再决定是否继续收尾阶段动作。
 
 读取最少必要上下文：
 
@@ -57,7 +65,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 删除 worktree
 - 执行归档
 
-不要默认自动合并 worktree 到 `main`，也不要默认删除 worktree。删除与归档都是有后果的操作，必须来自用户选择。
+不要默认自动删除 worktree。删除与归档都是有后果的操作，必须来自用户选择。
 
 ## 2.1 Superpowers Worktree 优先规则
 
@@ -113,7 +121,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 用户回复 `1`：执行“删除 worktree 并归档”。
 - 用户回复 `2`：仅删除 worktree。
 - 用户回复 `3`：仅当代码已合并且归档前置条件满足时，执行 archive；否则先说明阻塞条件。
-- 用户回复多项编号，如 `1,3`：按组合规则校验。合法时依次执行；不合法时明确指出冲突原因。
+- 用户回复多项编号，如 `1,3`：按组合规则校验。合法时按安全执行顺序运行；不合法时明确指出冲突原因。
 - 用户输入数字外的自由文本：默认视为继续修改当前实现，直接回到代码处理环节；只有意图不清晰时才补一个最短澄清问题。
 
 ## 3. 归档规则
@@ -142,7 +150,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 如果项目里存在明确规范，按项目要求处理 commit message 的格式、scope 和语言。
 - 如果项目里没有明确规范，回退到通用 Conventional Commits：`<type>(<scope>): <简要描述>`。
 - 只能提交 `.onespec.yaml` 中记录的 tracked files 与当前脏文件的交集；如果 `.onespec.yaml` 本身是脏的，也应一并提交，不允许把无关改动一并提交。
-- 如果代码已合并到目标分支且用户选择归档，执行 OpenSpec archive，并将状态设为 `archived`。
+- 如果代码已合并到目标分支且用户选择归档，直接执行 OpenSpec archive，并将状态设为 `archived`。
 - 如果用户当前只删除 worktree、不归档，将状态设为 `done`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
 - 只有真正执行 archive 后，才删除运行时状态文件：
 
@@ -150,9 +158,13 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 "$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" cleanup-runtime <change-id>
 ```
 
-已经满足归档前置条件且代码确实已经合并到目标分支后，如需真的执行归档，必须再次要求用户给出明确指令，推荐使用：
+用户一旦通过收尾菜单明确选择了归档或组合归档动作，就把这次选择视为唯一确认；不要再追加第二次确认。
 
-- `执行归档`
+实际执行收尾动作时，优先使用：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" run-actions <change-id> [delete-worktree] [archive]
+```
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase done

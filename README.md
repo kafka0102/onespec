@@ -58,6 +58,7 @@ The `skills` CLI does not parse `owner/repo/tree/<ref>/...` shorthand correctly.
 `onespec init` is the step that copies the bundled skills into Codex.
 
 After `onespec init`, restart Codex and invoke the OneSpec skills in your task.
+During active work, OneSpec keeps runtime state in `openspec/changes/<change-id>/.onespec.yaml`; archive is the point where that file is cleaned up.
 
 ## Release
 

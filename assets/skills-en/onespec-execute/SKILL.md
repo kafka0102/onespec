@@ -21,6 +21,14 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```
 
+If a relevant change exists, you must continue with:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
+```
+
+Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding whether to continue execution-phase work.
+
 Before apply, read at least:
 
 - `openspec/changes/<change-id>/proposal.md`
@@ -119,30 +127,6 @@ After implementation, always sync OpenSpec artifacts:
 - if implementation changed approved facts, update `design.md`, `proposal.md`, or spec deltas before proceeding
 - do not let implementation silently drift away from approved OpenSpec scope
 - run project tests and `openspec validate <change-id> --strict`
-- move state to `review` and generate review handoff
-
-```bash
-"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase review
-"$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> review --write
-```
-
-After implementation and verification, the flow must pause. Do not continue directly into merge, worktree deletion, archive, or any implicit closeout. At this point the agent must ask only whether archive-related cleanup should happen; do not require a separate review-confirmation step first.
-
-- tell the user the current branch and current workspace path
-- if the current branch or workspace differs from `origin_branch` / `origin_workspace_path`, explicitly say that implementation now lives in a temporary branch or temporary worktree and the user should review there first
-- do not stop at an abstract note like "the next step is `onespec-archive`" or just "do review-closeout". Also give the user a numbered next-step menu.
-- report only implementation results, verification results, current branch/worktree status, and the numbered next-step menu for entering user review or `onespec-archive`
-- never delete a temporary worktree before the user finishes review and explicitly requests closeout
-
-Report must cover:
-
-- which Superpowers plan file was used
-- which OpenSpec tasks were completed
-- what was synced back into `tasks.md`
-- whether `proposal.md`, `design.md`, or spec deltas changed
-- whether tests and `openspec validate <change-id> --strict` passed
-- the current branch, current workspace path, and whether they differ from `origin_branch` / `origin_workspace_path`
-- whether the change is ready for review-closeout
 
 ## 3. Native OpenSpec Apply
 
@@ -166,3 +150,69 @@ Pause and explain if:
 - `tasks.md` has not been translated into an executable Superpowers plan but the model is about to code anyway
 - implementation reveals a new requirement that would change scope, design, or specs
 - tests or `openspec validate <change-id> --strict` are failing and not yet fixed
+
+## 5. Implementation-Complete Gate (Mandatory Pause)
+
+> This gate is mandatory. If it is not satisfied, do not output a completion summary, do not give closeout suggestions, and do not enter the next phase.
+
+After implementation and verification, the flow must pause explicitly. Do not continue directly into merge, worktree deletion, archive, or any implicit closeout. The goal here is to enter user-review / `review-closeout` waiting state. After development finishes, ask only whether archive-related cleanup should happen; do not require a separate review-confirmation step first.
+
+### 5.1 Mandatory Script Calls
+
+After artifacts are synced and tests pass, you must run:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase review
+"$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> review --write
+```
+
+If these two commands were not executed, the gate has not passed. Do not skip this and jump straight to the completion report.
+
+### 5.2 Mandatory Report Checklist
+
+After running those commands, the user-facing report must include all of the following:
+
+1. current branch name
+2. current workspace path
+3. `origin_branch` and `origin_workspace_path`, including whether they match the current location
+4. which Superpowers plan file was used
+5. which OpenSpec tasks were completed
+6. how `tasks.md` was synced back
+7. whether `proposal.md`, `design.md`, or spec deltas changed
+8. test results
+9. `openspec validate <change-id> --strict` result
+10. the numbered next-step menu, including that any non-numbered reply means continue modifying the current implementation
+
+### 5.3 Numbered Next-Step Menu Template
+
+The report must end with a menu equivalent to:
+
+```text
+---
+Implementation and verification are complete.
+
+Current branch: <branch>
+Current workspace: <path>
+Origin: <origin_branch> @ <origin_workspace_path>
+
+1. Enter `onespec-archive` and choose delete-worktree / archive actions
+2. Keep the current branch / worktree as-is and stop here for now
+Other: any non-numbered content means continue modifying the current implementation; if the intent is outside the menu, the user may also describe it directly
+---
+```
+
+If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
+
+Do not stop at an abstract note such as "the next step is `onespec-archive`" or just "do review-closeout". You must also give the user a concrete numbered menu.
+
+### 5.4 Anti-Patterns (NEVER)
+
+The following are gate violations:
+
+- reporting "done" without first running the scripts in 5.1
+- omitting current branch / workspace information from the report
+- omitting a concrete numbered next-step menu
+- mixing archive, merge, or worktree-deletion actions into the implementation-complete report
+- entering `onespec-archive` before the user replies
+- replacing the concrete numbered menu with an abstract "next step is onespec-archive" statement
+- deleting a temporary worktree before review is complete and the user explicitly asks for closeout

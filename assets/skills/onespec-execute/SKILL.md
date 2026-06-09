@@ -21,6 +21,14 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```
 
+如果发现相关 change，必须继续执行：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
+```
+
+`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，再决定是否继续执行阶段动作。
+
 apply 前至少读取：
 
 - `openspec/changes/<change-id>/proposal.md`

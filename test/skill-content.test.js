@@ -57,8 +57,10 @@ test('onespec-design documents proposal and approval routing guardrails', async 
     'Proposal 批准 Gate 与路径选择',
     '开始实现',
     'make plan',
+    '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>',
+    '`next_gate`',
     'visual companion',
-    '如果 `brainstorming/visual-companion.md` 不存在',
+    '可扩展模块',
     '`text-only`',
     'rollout / migration / compatibility',
     'non-goals',
@@ -79,6 +81,8 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     'Apply 路由',
     '开始实现',
     'make plan',
+    '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>',
+    '`allowed_actions`',
     '默认不是“直接实现”，而是先把已批准的 OpenSpec change 翻译成 Superpowers 可执行计划',
     '.onespec.yaml',
     'touched_files_b64',
@@ -108,6 +112,7 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     '用户评审',
     '任意非编号内容',
     '继续修改当前实现',
+    '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>',
     'Superpowers Worktree 优先规则',
     'origin_workspace_mode=worktree',
     '多选收尾组合',
@@ -121,11 +126,11 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     '当前分支名',
     'origin_branch',
     '临时实现分支或临时 worktree',
-    '不要默认自动合并 worktree 到 `main`',
     'OpenSpec archive',
     'related-dirty <change-id>',
     'stage-related <change-id>',
     'detect-policy <change-id>',
+    'run-actions <change-id> [delete-worktree] [archive]',
     '.onespec.yaml',
     'cleanup-runtime <change-id>',
     'archive <skipped|archived>',
@@ -133,7 +138,14 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     expectIncludes(skill, expected);
   }
 
-  for (const unexpected of ['创建 PR', '创建 MR', 'PR/MR', 'command -v gh', 'command -v glab']) {
+  for (const unexpected of [
+    '创建 PR',
+    '创建 MR',
+    'PR/MR',
+    'command -v gh',
+    'command -v glab',
+    '必须再次要求用户给出明确指令',
+  ]) {
     assert.doesNotMatch(skill, new RegExp(unexpected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
 });
@@ -158,5 +170,15 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
     'Direct reply phrase: `approve and use the recommended path`'
   );
   expectIncludes(await readEnglishSkill('onespec-execute'), 'phase implementing');
+  expectIncludes(await readEnglishSkill('onespec-execute'), 'Implementation-Complete Gate');
+  expectIncludes(await readEnglishSkill('onespec-execute'), 'Mandatory Script Calls');
+  expectIncludes(await readEnglishSkill('onespec-execute'), 'numbered next-step menu');
+  expectIncludes(await readEnglishSkill('onespec-execute'), 'Anti-Patterns');
+  expectIncludes(await readEnglishSkill('onespec-execute'), '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>');
   expectIncludes(await readEnglishSkill('onespec-archive'), 'delete worktree and archive');
+  expectIncludes(await readEnglishSkill('onespec-design'), 'extensible module');
+  assert.doesNotMatch(
+    await readEnglishSkill('onespec-archive'),
+    /require one more explicit archive command/i
+  );
 });

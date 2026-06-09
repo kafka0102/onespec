@@ -27,8 +27,8 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-状态文件位置：`openspec/changes/<change-id>/.onespec.yaml`。这是 OneSpec 唯一的运行时临时文件；handoff 摘要、哈希和 touched files 都写回这个文件。只要用户还没 archive，就保留它；真正 archive 后再删除。
-`recover` 的输出不是参考信息，而是恢复后的执行合同。至少要读取其中的 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，然后再决定是否继续。
+运行时状态文件是 `openspec/changes/<change-id>/.onespec.yaml`。handoff 摘要、哈希和 touched files 都写回这里；archive 前保留，archive 后删除。
+`recover` 的输出是执行合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，再决定是否继续。
 
 ## 阶段路由
 
@@ -36,7 +36,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 - `propose`：定义新 change、梳理范围、生成 `proposal.md`、`design.md`、`tasks.md` 与 spec delta。使用 `onespec-design`。
 - `apply`：实现已批准 change、继续已有 change、生成或恢复 Superpowers plan、回填 OpenSpec 状态。使用 `onespec-execute`。
-- `review-closeout`：用户评审、处理反馈、归档、合并、保留分支或 worktree。使用 `onespec-archive`。
+- `review-closeout`：用户评审、处理反馈、删除 worktree 或执行归档。使用 `onespec-archive`。
 
 如果用户意图不清，只问一个简短问题，不要同时问多个。
 
@@ -44,7 +44,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 - 用户说“新需求”、“设计一下”、“写 proposal / spec”、“定义 change”时，进入 `onespec-design`。
 - 用户说“开始实现”、“执行这个 change”、“apply 这个 proposal / change”、“继续做这个 change”、“开始 coding / 开发”、“make plan”时，进入 `onespec-execute`。如果 proposal 尚未批准，`onespec-execute` 必须停止并转回 `onespec-design` 的批准 gate。
-- 用户说“review”、“收尾”、“归档”、“archive”、“合并”、“保留分支”时，进入 `onespec-archive`。
+- 用户说“review”、“收尾”、“归档”、“archive”、“删除 worktree”时，进入 `onespec-archive`。
 
 ## 共同约束
 

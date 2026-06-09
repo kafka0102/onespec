@@ -53,6 +53,7 @@ test('onespec-state initializes, updates, and recovers change state', async () =
   assert.match(recovery, /implementation_path: superpowers/);
   assert.match(recovery, /origin_branch: main/);
   assert.match(recovery, /origin_workspace_path: \/tmp\/project/);
+  assert.match(recovery, /handoff_summary: null/);
 
   const state = await readFile(
     path.join(projectPath, 'openspec', 'changes', 'add-login', '.onespec.yaml'),
@@ -139,6 +140,7 @@ test('onespec-handoff records deterministic review state in the single runtime f
   assert.equal(stdout.trim(), path.join('openspec', 'changes', 'add-login', '.onespec.yaml'));
   assert.match(state, /handoff_context: openspec\/changes\/add-login\/.onespec.yaml/);
   assert.match(state, /handoff_purpose: proposal/);
+  assert.match(state, /handoff_summary: proposal handoff from 4 file\(s\); primary artifact: openspec\/changes\/add-login\/proposal\.md/);
   assert.match(state, /handoff_hash: [a-f0-9]{64}/);
 });
 

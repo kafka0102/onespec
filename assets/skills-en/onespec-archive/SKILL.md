@@ -1,11 +1,11 @@
 ---
 name: onespec-archive
-description: Use when the user needs final review, feedback handling, merge/preserve decisions, worktree handling, or OpenSpec archive for a OneSpec change.
+description: Use when the user needs final review, feedback handling, worktree deletion, or OpenSpec archive for a OneSpec change.
 ---
 
 # OneSpec Archive
 
-Handles the review, closeout, and archive phase for OneSpec. The goal is to process branch/worktree cleanup and OpenSpec archive only after explicit user confirmation.
+Handles the review, closeout, and archive phase for OneSpec. The goal is to execute worktree deletion and OpenSpec archive only after explicit user confirmation.
 
 Announce at the start:
 
@@ -20,6 +20,14 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 . "$ONESPEC_ENV"
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```
+
+If a relevant change exists, you must continue with:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
+```
+
+Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding whether to continue closeout-phase work.
 
 Read the minimum necessary context:
 
@@ -57,7 +65,7 @@ Supported closeout paths are only about these two actions:
 - delete worktree
 - run archive
 
-Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Deletion and archive are consequential actions and require an explicit user choice.
+Do not auto-delete the worktree. Deletion and archive are consequential actions and require an explicit user choice.
 
 ## 2.1 Superpowers Worktree Priority
 
@@ -110,7 +118,7 @@ Menu handling rules:
 - reply `1`: execute `delete worktree and archive`
 - reply `2`: execute `delete worktree` only
 - reply `3`: run archive only when archive prerequisites are satisfied; otherwise explain the blocker
-- reply with multiple digits, such as `1,3`: validate the combination and execute it in order if valid; otherwise explain the conflict explicitly
+- reply with multiple digits, such as `1,3`: validate the combination and execute it in a safe order if valid; otherwise explain the conflict explicitly
 - free-form text instead of digits: treat it as a request to continue modifying the implementation; only ask a minimal clarification question if the intent is genuinely unclear
 
 ## 3. Archive Rules
@@ -139,7 +147,7 @@ Before archive or worktree deletion is finalized, always check whether there is 
 - if the project defines an explicit policy, follow it
 - if the project does not define a policy, fall back to general Conventional Commits: `<type>(<scope>): <short summary>`
 - only commit the intersection of the tracked-file list stored in `.onespec.yaml` and current dirty files; if `.onespec.yaml` itself is dirty, include it too; never include unrelated changes
-- If code is merged into the target branch and the user chooses archive, run OpenSpec archive and set state to `archived`.
+- If code is merged into the target branch and the user chooses archive, run OpenSpec archive immediately and set state to `archived`.
 - If the user deletes the worktree but does not archive yet, set state to `done` and explain that archive can be run later. Do not delete `.onespec.yaml` in that case.
 - Only after archive actually runs should the runtime state file be removed:
 
@@ -147,9 +155,13 @@ Before archive or worktree deletion is finalized, always check whether there is 
 "$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" cleanup-runtime <change-id>
 ```
 
-Once archive preconditions are satisfied and code is truly merged into the target branch, require one more explicit archive command before actually archiving. Recommended wording:
+Once the user chooses archive or a combined archive action from the closeout menu, treat that menu choice as the only required confirmation. Do not ask for a second archive confirmation.
 
-- `run archive`
+For actual closeout execution, prefer:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" run-actions <change-id> [delete-worktree] [archive]
+```
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase done

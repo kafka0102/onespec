@@ -58,6 +58,7 @@ npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills -a c
 真正把 skill 复制到 Codex 目录的是 `onespec init` 这一步。
 
 执行完 `onespec init` 后，重启 Codex，然后在任务里调用 OneSpec skills 即可。
+在 change 处于活动状态时，OneSpec 会把运行时状态写到 `openspec/changes/<change-id>/.onespec.yaml`；真正 archive 时才清理这个文件。
 
 ## 发布
 

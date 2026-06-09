@@ -52,6 +52,14 @@ context_hash() {
   done | hash_text
 }
 
+summary_text() {
+  local files count first
+  files="$(source_files)"
+  count="$(printf '%s\n' "$files" | sed '/^$/d' | wc -l | tr -d ' ')"
+  first="$(printf '%s\n' "$files" | sed -n '1p')"
+  printf '%s handoff from %s file(s); primary artifact: %s' "$purpose" "$count" "$first"
+}
+
 write_excerpt() {
   local file="$1"
   local max_lines=100
@@ -96,10 +104,12 @@ if [ "$(source_files | wc -l | tr -d ' ')" -eq 0 ]; then
 fi
 
 hash="$(context_hash)"
+summary="$(summary_text)"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
 "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_context "$state"
 "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_purpose "$purpose"
+"${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_summary "$summary"
 "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_hash "$hash"
 
 echo "$state"

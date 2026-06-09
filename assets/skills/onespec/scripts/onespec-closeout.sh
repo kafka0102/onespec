@@ -48,6 +48,10 @@ ensure_git_repo() {
   git rev-parse --show-toplevel >/dev/null 2>&1 || die "current directory is not inside a git repository"
 }
 
+git_common_dir() {
+  git rev-parse --git-common-dir
+}
+
 current_branch() {
   local branch
   branch="$(git branch --show-current 2>/dev/null || true)"
@@ -81,6 +85,15 @@ selected_actions_csv() {
     fi
   done
   printf '%s\n' "$joined"
+}
+
+state_destination_in_origin() {
+  local change="$1"
+  local origin_path
+  origin_path="$(canonicalize_path "$(get_state_value "$change" origin_workspace_path)")"
+  [ -n "$origin_path" ] || die "origin workspace path is empty"
+  [ "$origin_path" != "unknown" ] || die "origin workspace path is unknown"
+  printf '%s/openspec/changes/%s/.onespec.yaml\n' "$origin_path" "$change"
 }
 
 normalize_action() {
@@ -227,7 +240,10 @@ cmd_validate_actions() {
   origin_branch="$(get_state_value "$change" origin_branch)"
   temporary="$(temporary_worktree_status "$change" | awk -F ': ' '$1 == "temporary_worktree" { print $2 }')"
 
-  if [ "$has_archive" = "true" ] && [ "$has_delete_worktree" = "true" ]; then
+  if [ "$has_delete_worktree" = "true" ] && [ "$temporary" != "true" ]; then
+    valid="false"
+    message="不能删除 worktree：当前不在临时 worktree。"
+  elif [ "$has_archive" = "true" ] && [ "$has_delete_worktree" = "true" ]; then
     message="允许先删除临时 worktree，再继续归档。"
   elif [ "$has_delete_worktree" = "true" ] && [ "$has_archive" != "true" ]; then
     message="允许仅删除临时 worktree；之后仍可单独执行归档。"
@@ -252,6 +268,88 @@ origin_branch: $origin_branch
 EOF
 }
 
+run_archive_command() {
+  local change="$1"
+  local archive_bin="${ONESPEC_ARCHIVE_BIN:-openspec}"
+  "$archive_bin" archive "$change" --yes
+}
+
+preserve_runtime_state_in_origin() {
+  local change="$1"
+  local source_file destination_file destination_dir
+  source_file="$(state_file "$change")"
+  destination_file="$(state_destination_in_origin "$change")"
+  destination_dir="$(dirname "$destination_file")"
+
+  mkdir -p "$destination_dir"
+  cp "$source_file" "$destination_file"
+  printf '%s\n' "$destination_file"
+}
+
+delete_current_worktree() {
+  local current_path common_dir
+  current_path="$(current_workspace_path)"
+  common_dir="$(git_common_dir)"
+  git --git-dir="$common_dir" worktree remove --force "$current_path"
+  printf '%s\n' "$current_path"
+}
+
+cmd_run_actions() {
+  local change="$1"
+  shift
+  valid_change "$change"
+  ensure_git_repo
+
+  local validation selected valid archive_selected delete_selected preserved_state removed_worktree
+  validation="$(cmd_validate_actions "$change" "$@")"
+  selected="$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "selected_actions" { print $2 }')"
+  valid="$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "valid" { print $2 }')"
+
+  [ "$valid" = "true" ] || die "$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "message" { print $2 }')"
+  [ -n "$selected" ] || die "run-actions requires at least one closeout action"
+
+  archive_selected="false"
+  delete_selected="false"
+  if printf '%s\n' "$selected" | grep -Eq '(^|,)archive($|,)'; then
+    archive_selected="true"
+  fi
+  if printf '%s\n' "$selected" | grep -Eq '(^|,)delete-worktree($|,)'; then
+    delete_selected="true"
+  fi
+
+  preserved_state=""
+  removed_worktree=""
+
+  # Safe order: archive first, then delete the temporary worktree.
+  if [ "$archive_selected" = "true" ]; then
+    run_archive_command "$change"
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
+    "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" phase archived
+    "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" archive archived
+    "${BASH:-bash}" "$script_dir/onespec-closeout.sh" cleanup-runtime "$change" >/dev/null
+  fi
+
+  if [ "$delete_selected" = "true" ]; then
+    if [ "$archive_selected" != "true" ]; then
+      local script_dir
+      script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
+      "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" phase done
+      "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" archive skipped
+      preserved_state="$(preserve_runtime_state_in_origin "$change")"
+    fi
+    removed_worktree="$(delete_current_worktree)"
+  fi
+
+  cat <<EOF
+selected_actions: $selected
+archive_executed: $archive_selected
+worktree_deleted: $delete_selected
+preserved_state_file: ${preserved_state:-none}
+deleted_worktree_path: ${removed_worktree:-none}
+EOF
+}
+
 cmd_cleanup_runtime() {
   local change="$1"
   valid_change "$change"
@@ -270,6 +368,7 @@ usage() {
   onespec-closeout.sh inspect <change>
   onespec-closeout.sh recommend-actions <change>
   onespec-closeout.sh validate-actions <change> [delete-worktree] [archive]
+  onespec-closeout.sh run-actions <change> [delete-worktree] [archive]
   onespec-closeout.sh cleanup-runtime <change>
 EOF
 }
@@ -288,6 +387,11 @@ case "$cmd" in
     [ "$#" -ge 2 ] || { usage; exit 2; }
     shift
     cmd_validate_actions "$@"
+    ;;
+  run-actions)
+    [ "$#" -ge 3 ] || { usage; exit 2; }
+    shift
+    cmd_run_actions "$@"
     ;;
   cleanup-runtime)
     [ "$#" -eq 2 ] || { usage; exit 2; }

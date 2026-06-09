@@ -173,6 +173,7 @@ origin_workspace_mode: unknown
 plan: null
 handoff_context: null
 handoff_purpose: null
+handoff_summary: null
 handoff_hash: null
 touched_files_b64: null
 review_result: pending
@@ -203,7 +204,7 @@ cmd_set() {
   [ -f "$file" ] || die "state not found: $file"
 
   case "$key" in
-    phase|ambiguity|complexity|implementation_path|execution_method|workspace|origin_branch|origin_workspace_path|origin_workspace_mode|plan|handoff_context|handoff_purpose|handoff_hash|touched_files_b64|review_result|archive|updated_at)
+    phase|ambiguity|complexity|implementation_path|execution_method|workspace|origin_branch|origin_workspace_path|origin_workspace_mode|plan|handoff_context|handoff_purpose|handoff_summary|handoff_hash|touched_files_b64|review_result|archive|updated_at)
       ;;
     *)
       die "unsupported field: $key"
@@ -231,7 +232,7 @@ cmd_recover() {
 
   echo "OneSpec 恢复状态"
   echo "change: $change"
-  for key in phase ambiguity complexity implementation_path execution_method workspace origin_branch origin_workspace_path origin_workspace_mode plan handoff_context handoff_purpose handoff_hash review_result archive updated_at; do
+  for key in phase ambiguity complexity implementation_path execution_method workspace origin_branch origin_workspace_path origin_workspace_mode plan handoff_context handoff_purpose handoff_summary handoff_hash review_result archive updated_at; do
     printf '%s: %s\n' "$key" "$(field_value "$file" "$key")"
   done
   local phase next_skill next_gate allowed_actions next_step

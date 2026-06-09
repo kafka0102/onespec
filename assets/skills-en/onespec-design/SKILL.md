@@ -21,6 +21,14 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```
 
+If a relevant change exists, you must continue with:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
+```
+
+Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding whether to continue design-phase work.
+
 Read the minimum necessary context:
 
 - Relevant parts of `openspec/config.yaml`, `openspec/project.md`, and `openspec/specs/**`
@@ -82,8 +90,9 @@ Visual-design trigger rules:
 
 - If the user asks to see designs, page options, UI/UX directions, visual redesign, prototypes, mockups, wireframes, or browser-visible results, treat that as a visual confirmation request by default.
 - In that case, do not continue with text-only clarification. If the change does not yet have an approved visual direction, route to brainstorming with a visual companion.
-- For mockups, wireframes, layout comparisons, style comparisons, or page-result confirmation, first send a standalone visual companion offer message with no other content. Wait for confirmation, read `brainstorming/visual-companion.md`, start a local server, provide a local URL, and present the first visual direction. Only continue with text-only brainstorming if the user declines.
-- If `brainstorming/visual-companion.md` is missing, or the local server dependency chain is unavailable, stop instead of improvising. Offer exactly two options: `1. restore visual companion dependencies and continue`, `2. switch to text-only brainstorming`.
+- Treat the visual companion as an extensible module rather than a fixed repository file. It may be backed by a project module, a local prototype, a browser preview, or another visual workflow available in the current environment.
+- For mockups, wireframes, layout comparisons, style comparisons, or page-result confirmation, first send a standalone visual companion offer message with no other content. Wait for confirmation, then launch whatever visual companion flow is available in the current environment, provide a local URL, prototype entry point, or equivalent visual surface, and present the first visual direction. Only continue with text-only brainstorming if the user declines.
+- Do not stop just because a specific visual companion file is missing, and do not make file-existence checks a gate. Only fall back to `text-only` brainstorming when no usable visual path exists in the current environment, and say clearly that this is a degraded path.
 
 ## 3. Post-Proposal Task Analysis
 

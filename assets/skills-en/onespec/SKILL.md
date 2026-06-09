@@ -27,8 +27,8 @@ If a relevant change exists, run:
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-State file: `openspec/changes/<change-id>/.onespec.yaml`. This is the only runtime temporary file for OneSpec; handoff summary, hashes, and touched-file tracking all live there. Keep it until archive actually happens, then delete it during archive cleanup.
-Treat `recover` output as an execution contract, not a hint. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding what to do next.
+Runtime state lives in `openspec/changes/<change-id>/.onespec.yaml`. Handoff summary, hashes, and touched-file tracking all live there; keep it until archive, then delete it during archive cleanup.
+Treat `recover` output as the execution contract, not as a hint. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding what to do next.
 
 ## Phase Routing
 
@@ -36,7 +36,7 @@ Classify the current request first:
 
 - `propose`: define a new change, clarify scope, generate `proposal.md`, `design.md`, `tasks.md`, and spec deltas. Use `onespec-design`.
 - `apply`: implement an approved change, continue an existing change, generate or resume a Superpowers plan, and sync OpenSpec state. Use `onespec-execute`.
-- `review-closeout`: user review, feedback handling, archive, merge, or preserve branch/worktree. Use `onespec-archive`.
+- `review-closeout`: user review, feedback handling, worktree deletion, or archive. Use `onespec-archive`.
 
 If intent is unclear, ask one short question only.
 
@@ -44,7 +44,7 @@ Default intent mapping:
 
 - Requests like "new requirement", "design this", "write a proposal/spec", or "define a change" go to `onespec-design`.
 - Requests like "start implementation", "execute this change", "apply this proposal/change", "continue this change", "start coding/development", or "make plan" go to `onespec-execute`. If the proposal is not approved yet, `onespec-execute` must stop and send the flow back to the approval gate in `onespec-design`.
-- Requests like "review", "close out", "archive", "merge", or "keep the branch" go to `onespec-archive`.
+- Requests like "review", "close out", "archive", or "delete the worktree" go to `onespec-archive`.
 
 ## Shared Constraints
 

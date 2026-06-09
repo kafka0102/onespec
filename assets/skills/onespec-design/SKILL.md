@@ -21,6 +21,14 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```
 
+如果发现相关 change，必须继续执行：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
+```
+
+`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，再决定是否继续设计阶段动作。
+
 读取最少必要上下文：
 
 - `openspec/config.yaml`、`openspec/project.md`、`openspec/specs/**` 中与任务相关的部分
@@ -82,8 +90,9 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 
 - 如果用户要求“给我看设计效果”、“给我看页面方案”、“出 UI / UX 方案”、“做视觉设计 / 视觉升级”、“出原型 / mockup / wireframe”、“浏览器里给我看效果”，或明确要求比较布局、样式、视觉方向，默认视为需要视觉化设计确认。
 - 出现这类诉求时，不要继续按纯文本澄清推进；只要当前 change 还没有被批准为固定视觉方案，就应路由到带 visual companion 的 brainstorming。
-- 涉及 mockup、wireframe、布局比较、视觉风格比较或页面效果确认时，先单独发送 visual companion offer，消息里不能混入其他内容；等待用户确认后，读取 `brainstorming/visual-companion.md`，启动本地 server，提供本地 URL，并给出第一版可视化方案。用户拒绝后，才允许继续纯文本 brainstorming。
-- 如果 `brainstorming/visual-companion.md` 不存在，或启动本地 server 所需依赖缺失，必须暂停，不允许临场伪造 visual companion 流程。此时只允许给用户两个明确选项：1. 补齐 visual companion 依赖后继续；2. 改成 `text-only` brainstorming。
+- visual companion 是可扩展模块，不绑定固定仓库文件名或固定实现。它可以由项目内现成模块、本地原型、浏览器预览页或其他可视化工作流承载。
+- 涉及 mockup、wireframe、布局比较、视觉风格比较或页面效果确认时，先单独发送 visual companion offer，消息里不能混入其他内容；等待用户确认后，启动当前环境里可用的 visual companion 流程，提供本地 URL、原型入口或等价的可视化载体，并给出第一版可视化方案。用户拒绝后，才允许继续纯文本 brainstorming。
+- 不要因为仓库里缺少某个固定的 visual companion 文件就中止流程，也不要把“检查某个预设文件是否存在”当成前置 gate。只有当当前环境里完全没有可用的可视化实现路径时，才退回 `text-only` brainstorming，并明确告知这是降级路径。
 
 ## 3. Proposal 完成后的任务分析
 

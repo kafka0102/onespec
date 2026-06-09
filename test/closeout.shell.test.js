@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { access, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -29,6 +29,27 @@ async function initChangeState(projectPath, change, overrides = {}) {
   for (const [key, value] of Object.entries(overrides)) {
     await execFileAsync('bash', [stateScriptPath, 'set', change, key, value], { cwd: projectPath });
   }
+}
+
+async function advanceChangeToReview(projectPath, change) {
+  const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+  for (const phase of ['proposal-ready', 'approved', 'implementing', 'review']) {
+    await execFileAsync('bash', [stateScriptPath, 'set', change, 'phase', phase], { cwd: projectPath });
+  }
+}
+
+async function writeFakeArchiveBin(projectPath) {
+  const scriptPath = path.join(projectPath, 'fake-openspec.sh');
+  const logPath = path.join(projectPath, 'archive.log');
+  await writeFile(
+    scriptPath,
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "${logPath}"
+`,
+    { mode: 0o755 },
+  );
+  return { scriptPath, logPath };
 }
 
 test('onespec-closeout inspect reports worktree cleanup defaults and delete-worktree-plus-archive recommendation', async () => {
@@ -224,4 +245,85 @@ test('onespec-closeout cleanup-runtime removes the single runtime state file onl
 
   assert.equal(stdout.trim(), 'openspec/changes/cleanup-login/.onespec.yaml');
   await assert.rejects(access(statePath));
+});
+
+test('onespec-closeout run-actions executes archive once and removes runtime state on the target branch', async () => {
+  const projectPath = await tmpProject();
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const statePath = path.join(projectPath, 'openspec', 'changes', 'archive-run', '.onespec.yaml');
+  const { scriptPath: archiveBin, logPath } = await writeFakeArchiveBin(projectPath);
+
+  await initGitRepo(projectPath);
+  await initChangeState(projectPath, 'archive-run', {
+    origin_branch: 'main',
+    origin_workspace_path: projectPath,
+    origin_workspace_mode: 'current-branch',
+  });
+  await advanceChangeToReview(projectPath, 'archive-run');
+
+  const { stdout } = await execFileAsync(
+    'bash',
+    [closeoutScriptPath, 'run-actions', 'archive-run', 'archive'],
+    {
+      cwd: projectPath,
+      env: { ...process.env, ONESPEC_ARCHIVE_BIN: archiveBin },
+    },
+  );
+
+  assert.match(stdout, /selected_actions: archive/);
+  assert.match(stdout, /archive_executed: true/);
+  assert.match(stdout, /worktree_deleted: false/);
+  assert.match(await readFile(logPath, 'utf8'), /archive archive-run --yes/);
+  await assert.rejects(access(statePath));
+});
+
+test('onespec-closeout run-actions deletes a temporary worktree and preserves runtime state in origin workspace', async () => {
+  const projectPath = await tmpProject();
+  const worktreePath = await tmpProject('onespec-closeout-wt-');
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+  const preservedStatePath = path.join(projectPath, 'openspec', 'changes', 'preserve-login', '.onespec.yaml');
+
+  await initGitRepo(projectPath);
+  await initChangeState(projectPath, 'preserve-login', {
+    origin_branch: 'main',
+    origin_workspace_path: projectPath,
+    origin_workspace_mode: 'worktree',
+  });
+  await advanceChangeToReview(projectPath, 'preserve-login');
+
+  await execFileAsync('git', ['worktree', 'add', '-b', 'feature/preserve-login', worktreePath, 'HEAD'], {
+    cwd: projectPath,
+  });
+  await mkdir(path.join(worktreePath, 'openspec', 'changes', 'preserve-login'), { recursive: true });
+  await execFileAsync('bash', [stateScriptPath, 'init', 'preserve-login'], { cwd: worktreePath });
+  await execFileAsync('bash', [stateScriptPath, 'set', 'preserve-login', 'origin_branch', 'main'], {
+    cwd: worktreePath,
+  });
+  await execFileAsync(
+    'bash',
+    [stateScriptPath, 'set', 'preserve-login', 'origin_workspace_path', projectPath],
+    { cwd: worktreePath },
+  );
+  await execFileAsync(
+    'bash',
+    [stateScriptPath, 'set', 'preserve-login', 'origin_workspace_mode', 'worktree'],
+    { cwd: worktreePath },
+  );
+  await advanceChangeToReview(worktreePath, 'preserve-login');
+
+  const { stdout } = await execFileAsync(
+    'bash',
+    [closeoutScriptPath, 'run-actions', 'preserve-login', 'delete-worktree'],
+    { cwd: worktreePath },
+  );
+
+  assert.match(stdout, /selected_actions: delete-worktree/);
+  assert.match(stdout, /archive_executed: false/);
+  assert.match(stdout, /worktree_deleted: true/);
+  await assert.rejects(access(worktreePath));
+
+  const preservedState = await readFile(preservedStatePath, 'utf8');
+  assert.match(preservedState, /phase: done/);
+  assert.match(preservedState, /archive: skipped/);
 });
