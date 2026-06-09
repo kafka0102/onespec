@@ -126,7 +126,7 @@ After implementation, always sync OpenSpec artifacts:
 "$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> review --write
 ```
 
-After implementation and verification, the flow must pause. Do not continue directly into merge, worktree deletion, archive, or any implicit closeout. At this point the agent must:
+After implementation and verification, the flow must pause. Do not continue directly into merge, worktree deletion, archive, or any implicit closeout. At this point the agent must ask only whether archive-related cleanup should happen; do not require a separate review-confirmation step first.
 
 - tell the user the current branch and current workspace path
 - if the current branch or workspace differs from `origin_branch` / `origin_workspace_path`, explicitly say that implementation now lives in a temporary branch or temporary worktree and the user should review there first

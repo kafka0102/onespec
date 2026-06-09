@@ -85,8 +85,8 @@ selected_actions_csv() {
 
 normalize_action() {
   case "$1" in
-    merge|merge-branch|local-merge)
-      echo "merge"
+    delete-worktree|drop-worktree|cleanup-worktree)
+      echo "delete-worktree"
       ;;
     archive|run-archive)
       echo "archive"
@@ -150,10 +150,10 @@ recommended_combination() {
   reason="review-only"
 
   if [ "$temporary" = "true" ]; then
-    recommendation="merge"
-    reason="temporary-worktree-must-close-locally"
+    recommendation="delete-worktree,archive"
+    reason="temporary-worktree-can-be-cleaned-before-or-with-archive"
   else
-    recommendation="merge,archive"
+    recommendation="archive"
     reason="already-on-target-path"
   fi
 
@@ -195,7 +195,7 @@ cmd_validate_actions() {
   local -a selected=()
   local action normalized
   local already_selected
-  local has_merge="false"
+  local has_delete_worktree="false"
   local has_archive="false"
   local current_head origin_branch temporary valid message
 
@@ -216,7 +216,7 @@ cmd_validate_actions() {
 
   for action in "${selected[@]}"; do
     case "$action" in
-      merge) has_merge="true" ;;
+      delete-worktree) has_delete_worktree="true" ;;
       archive) has_archive="true" ;;
     esac
   done
@@ -227,7 +227,11 @@ cmd_validate_actions() {
   origin_branch="$(get_state_value "$change" origin_branch)"
   temporary="$(temporary_worktree_status "$change" | awk -F ': ' '$1 == "temporary_worktree" { print $2 }')"
 
-  if [ "$has_archive" = "true" ] && [ "$has_merge" != "true" ]; then
+  if [ "$has_archive" = "true" ] && [ "$has_delete_worktree" = "true" ]; then
+    message="允许先删除临时 worktree，再继续归档。"
+  elif [ "$has_delete_worktree" = "true" ] && [ "$has_archive" != "true" ]; then
+    message="允许仅删除临时 worktree；之后仍可单独执行归档。"
+  elif [ "$has_archive" = "true" ] && [ "$has_delete_worktree" != "true" ]; then
     if [ "$temporary" = "true" ] || { [ "$origin_branch" != "unknown" ] && [ "$current_head" != "$origin_branch" ]; }; then
       valid="false"
       message="不能单独执行归档：当前代码尚未确认位于目标分支。"
@@ -235,7 +239,7 @@ cmd_validate_actions() {
       message="允许单独执行归档：当前已在目标分支路径上。"
     fi
   elif [ "${#selected[@]}" -eq 0 ]; then
-    message="本次不执行合并或归档；之后仍可再次进入收尾。"
+    message="本次不删除 worktree 或归档；之后仍可再次进入收尾。"
   fi
 
   cat <<EOF
@@ -265,7 +269,7 @@ usage() {
 用法:
   onespec-closeout.sh inspect <change>
   onespec-closeout.sh recommend-actions <change>
-  onespec-closeout.sh validate-actions <change> [merge] [archive]
+  onespec-closeout.sh validate-actions <change> [delete-worktree] [archive]
   onespec-closeout.sh cleanup-runtime <change>
 EOF
 }

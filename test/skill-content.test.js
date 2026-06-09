@@ -89,6 +89,8 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     '必须明确暂停',
     'review-closeout',
     '进入用户评审',
+    '只需询问是否进行归档',
+    '任意非编号内容视为继续修改当前实现',
     '不要只停在“下一步应进入 `onespec-archive`”',
     'openspec validate <change-id> --strict',
   ]) {
@@ -101,23 +103,21 @@ test('onespec-archive documents review closeout and archive guardrails', async (
 
   for (const expected of [
     '用户评审',
-    'continue',
-    '继续评审',
+    '任意非编号内容',
+    '继续修改当前实现',
     'Superpowers Worktree 优先规则',
     'origin_workspace_mode=worktree',
     '多选收尾组合',
-    '`{合并分支, 执行归档}`',
-    '`{}`',
-    '本地合并',
-    '保留分支',
-    '确认本地合并',
-    '确认保留当前分支与 worktree',
+    '`{删除 worktree 并归档}`',
+    '`{仅删除 worktree}`',
+    '`{仅归档}`',
+    '删除 worktree 并归档',
+    '仅删除 worktree',
+    '仅归档',
     '执行归档',
     '当前分支名',
     'origin_branch',
     '临时实现分支或临时 worktree',
-    '本地合并',
-    '保留',
     '不要默认自动合并 worktree 到 `main`',
     'OpenSpec archive',
     'related-dirty <change-id>',
@@ -147,5 +147,5 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   expectIncludes(await readEnglishSkill('onespec-archive'), '# OneSpec Archive');
   expectIncludes(await readEnglishSkill('onespec-design'), 'text-only');
   expectIncludes(await readEnglishSkill('onespec-execute'), 'phase implementing');
-  expectIncludes(await readEnglishSkill('onespec-archive'), 'confirm local merge');
+  expectIncludes(await readEnglishSkill('onespec-archive'), 'delete worktree and archive');
 });

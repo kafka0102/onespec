@@ -39,9 +39,9 @@ Entry validation: if phase is already `review` but `.onespec.yaml` does not show
 
 Let the user review the implementation. If they raise issues, continue editing and re-verify.
 
-If the user confirms the result, do not require words like `continue`, `yes`, or `approve closeout`. Show a numbered closeout menu and let the user reply with digits. If the user's intent is not covered, allow free-form instructions.
+After implementation is done, do not require another explicit review-confirmation step and do not show a generic "continue review / preserve branch" menu. Only ask whether archive-related cleanup should happen. If the user replies with any non-numbered content, treat that as a request to keep modifying the implementation and return directly to code work.
 
-Do not make the user guess what to type next. When entering `onespec-archive`, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `2,4`.
+Do not make the user guess what to type next. When entering `onespec-archive`, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `1,3`.
 
 Before offering closeout choices, explicitly tell the user:
 
@@ -50,15 +50,14 @@ Before offering closeout choices, explicitly tell the user:
 - the recorded `origin_branch` and `origin_workspace_path`
 - whether the current review location still matches the original branch/workspace
 
-If the current branch or workspace differs from the recorded `origin_*` fields, explicitly say that the implementation is now living in a temporary branch or temporary worktree, and that the user should review there first. Pause at that point and wait for review feedback before proposing merge or deletion.
+If the current branch or workspace differs from the recorded `origin_*` fields, explicitly say that the implementation is now living in a temporary branch or temporary worktree. In that case, show delete-worktree / archive combinations by default; if the user switches to free-form text, treat it as a request for more code changes.
 
-Supported closeout paths:
+Supported closeout paths are only about these two actions:
 
-- local merge: switch to the target branch (default to `origin_branch` unless the project defines a different target), merge, test, then delete feature branch and worktree
-- preserve: do not merge and do not delete; state may still move to `done`
-- run archive: only allowed after the code is truly on the target branch
+- delete worktree
+- run archive
 
-Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Merge, deletion, and archive are consequential actions and require an explicit user choice.
+Do not auto-merge a worktree back to `main`, and do not auto-delete the worktree. Deletion and archive are consequential actions and require an explicit user choice.
 
 ## 2.1 Superpowers Worktree Priority
 
@@ -74,58 +73,49 @@ The agent must tell the user:
 Default recommended order:
 
 1. finish review inside the temporary worktree
-2. after user confirmation, prefer "merge locally" so the code is brought back to `origin_branch` or the project target branch
-3. if the user chooses local merge: merge back to `origin_branch` or the project target branch, re-test, then delete the local temporary branch / worktree
-4. if the user chooses preserve, keep the worktree and do not delete it
-
-By default, "delete branch" here means only the local temporary branch.
+2. if no more code changes are needed, prefer `delete worktree and archive`
+3. if the user only wants local cleanup, allow `delete worktree` only
+4. if the code is already truly on the target branch, allow `run archive` only
 
 ## 2.2 Multi-Select Closeout Combinations
 
-Do not model closeout as a pure single-choice menu anymore. At minimum, make these two actions combinable. Use numbered combinations such as `2,4`:
+Do not model closeout as a pure single-choice menu anymore. The menu should revolve around combinable archive-related actions. Use numbered combinations such as `1,3`:
 
-- `merge branch`
+- `delete worktree`
 - `run archive`
-
-Also keep one explicit no-op path, for example:
-
-- `continue review / do not close out yet`
 
 Recommended validation rules:
 
-- `{merge branch}`: valid. Use when code should be merged locally now, but not archived by default.
-- `{merge branch, run archive}`: valid. This is also the default recommended combination once code is truly on the target branch.
+- `{delete worktree, run archive}`: valid. Use when the temporary worktree should be cleaned up and the change should be archived now.
+- `{delete worktree}`: valid. Use when the user only wants to clean up the local temporary worktree for now.
 - `{run archive}`: valid only when code is already on the target branch; if the code is still in a temporary branch/worktree, this is invalid by default.
-- `{}`: valid. This means finish the current review round without integration or archive; state may move to `done`, with a note that archive can happen later.
 
 If the user selects an invalid combination, explain the conflict explicitly. Do not guess the execution order on the user's behalf.
 
 Default recommended combinations:
 
-- if currently in a Superpowers temporary worktree: recommend `{merge branch}`, and explain that local temporary branch / worktree cleanup will happen after merge
-- if not in a temporary worktree and the user explicitly wants local integration now: recommend `{merge branch, run archive}`
-- if the user wants to stop here without integrating yet: recommend `{}`, and explain that archive can be run later after merge
+- if currently in a Superpowers temporary worktree: recommend `{delete worktree, run archive}`
+- if currently in a temporary worktree but the user only wants local cleanup: recommend `{delete worktree}`
+- if not in a temporary worktree and code is already truly on the target branch: recommend `{run archive}`
 
 The user-facing closeout menu should include at least:
 
-1. continue reviewing on the current implementation branch and do not close out yet
-2. merge locally back to the target branch and delete the temporary branch / worktree
-3. preserve the current branch and worktree for later
-4. if code is already truly on the target branch, run archive
-Other: if the user's intent is not covered, allow free-form instructions
+1. delete worktree and archive
+2. delete worktree only
+3. run archive only
+Other: if the user's intent is not covered, allow free-form instructions; any non-numbered content means continue modifying the current implementation
 
 Menu handling rules:
 
-- reply `1`: stay in review and do not close out
-- reply `2`: enter the local-merge and cleanup flow
-- reply `3`: confirm preserving the current branch and worktree, mark `done` or keep it resumable, and wait for later
-- reply `4`: run archive only when archive prerequisites are satisfied; otherwise explain the blocker
-- reply with multiple digits, such as `2,4`: validate the combination and execute it in order if valid; otherwise explain the conflict explicitly
-- free-form text instead of digits: if intent is clear, follow it; otherwise ask one minimal clarification question
+- reply `1`: execute `delete worktree and archive`
+- reply `2`: execute `delete worktree` only
+- reply `3`: run archive only when archive prerequisites are satisfied; otherwise explain the blocker
+- reply with multiple digits, such as `1,3`: validate the combination and execute it in order if valid; otherwise explain the conflict explicitly
+- free-form text instead of digits: treat it as a request to continue modifying the implementation; only ask a minimal clarification question if the intent is genuinely unclear
 
 ## 3. Archive Rules
 
-Before archive, merge, or preserve closeout is finalized, always check whether there is still uncommitted code related to the current change:
+Before archive or worktree deletion is finalized, always check whether there is still uncommitted code related to the current change:
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_COMMIT" related-dirty <change-id>
@@ -149,11 +139,8 @@ Before archive, merge, or preserve closeout is finalized, always check whether t
 - if the project defines an explicit policy, follow it
 - if the project does not define a policy, fall back to general Conventional Commits: `<type>(<scope>): <short summary>`
 - only commit the intersection of the tracked-file list stored in `.onespec.yaml` and current dirty files; if `.onespec.yaml` itself is dirty, include it too; never include unrelated changes
-- before actually merging, require one more explicit user confirmation to confirm local merge
-- before leaving the code unmerged, require one more explicit user confirmation to confirm preserving the current branch and worktree
-
 - If code is merged into the target branch and the user chooses archive, run OpenSpec archive and set state to `archived`.
-- If the user does not archive, or implementation is still only in a preserved branch, set state to `done` and explain that archive can be run later. Do not delete `.onespec.yaml` in that case.
+- If the user deletes the worktree but does not archive yet, set state to `done` and explain that archive can be run later. Do not delete `.onespec.yaml` in that case.
 - Only after archive actually runs should the runtime state file be removed:
 
 ```bash
@@ -174,7 +161,7 @@ Before archiving, confirm:
 - `tasks.md` is checked off to match reality
 - project tests passed, or any failures are explicitly called out
 - `openspec validate <change-id> --strict` passed
-- the user explicitly chose merge, preserve, or archive strategy
+- the user explicitly chose a delete-worktree, archive, or combined strategy
 - no user-review feedback remains unresolved
 
 ## 4. Report
@@ -182,7 +169,7 @@ Before archiving, confirm:
 The closeout report must cover:
 
 - user review result
-- selected closeout path: local merge, preserve, or archive
+- selected closeout path: delete worktree, archive, or a combination
 - final branch/worktree state
 - how the current branch relates to `origin_branch`, and whether a temporary worktree is still preserved
 - status of `tasks.md`, tests, and OpenSpec validate
@@ -194,6 +181,6 @@ Pause and explain if:
 
 - the user has not finished final review
 - the user has not explicitly chosen a closeout path
-- the user has not explicitly approved merge, worktree deletion, or OpenSpec archive
-- code is not merged into the target branch but the user asks to archive
+- the user has not explicitly approved worktree deletion or OpenSpec archive
+- code is not merged into the target branch and the user asks to archive without a valid delete-worktree combination
 - tests or `openspec validate <change-id> --strict` are failing and the user has not explicitly accepted the risk
