@@ -139,40 +139,50 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 
 默认意图映射、issue workflow 路由或实现路径推荐，不等于 proposal 已获批。
 
-只有用户明确批准 proposal / design / spec 后，才允许进入实现计划。设计阶段结束时，不要要求用户输入 `批准`、`yes`、`continue` 等完整词；必须给出编号选项，用户回复数字即可。沉默、“看起来还行”、最初的“开始实现”、“执行这个 change”或“make plan”都不算对 proposal 产物的批准。
+只有用户明确批准 proposal / design / spec 后，才允许进入实现计划。设计阶段结束时，不要只给一句自由文本，也不要只要求用户输入 `批准`、`yes`、`continue` 等完整词；必须给出“显式选项 + 推荐项 + 可直接回复的口令”菜单。用户可以回复数字，也可以直接回复对应口令。沉默、“看起来还行”、最初的“开始实现”、“执行这个 change”或“make plan”都不算对 proposal 产物的批准。
 
 默认使用下面这组批准菜单，并把推荐路径写进第 1 项：
 
-1. 批准当前 proposal / design / spec，并按推荐路径继续实现
+1. 批准当前 proposal / design / spec，并按推荐路径继续实现（推荐）
+   可直接回复：`批准，按推荐路径继续`
 2. 批准当前 proposal / design / spec，但我要改实现路径、执行方式或工作区
+   可直接回复：`批准，但我要改实现路径`
 3. 先修改 proposal / design / tasks / spec；我会补充要改的点
+   可直接回复：`先修改 proposal`
 4. 先停在设计阶段，暂不进入实现
+   可直接回复：`先停在设计阶段`
 其他：如果意图不在以上选项里，允许用户直接补充说明其他操作
 
 菜单解释规则：
 
-- 用户回复 `1`：视为批准当前 artifacts，并接受当前推荐路径。
-- 用户回复 `2`：视为批准当前 artifacts，但要覆盖推荐路线；此时继续给出下一层编号菜单，只询问仍未确认的维度。
-- 用户回复 `3`：继续留在 `onespec-design`，根据用户反馈修改 artifacts，不进入实现。
-- 用户回复 `4`：暂停在设计阶段，等待用户后续指令。
-- 用户输入数字外的自由文本：如果意图清晰，按用户自定义意图处理；如果仍有歧义，只追问一个最短的澄清问题。
+- 用户回复 `1` 或 `批准，按推荐路径继续`：视为批准当前 artifacts，并接受当前推荐路径。
+- 用户回复 `2` 或 `批准，但我要改实现路径`：视为批准当前 artifacts，但要覆盖推荐路线；此时继续给出下一层显式选项，只询问仍未确认的维度。
+- 用户回复 `3` 或 `先修改 proposal`：继续留在 `onespec-design`，根据用户反馈修改 artifacts，不进入实现。
+- 用户回复 `4` 或 `先停在设计阶段`：暂停在设计阶段，等待用户后续指令。
+- 用户输入其他自由文本：如果意图清晰，按用户自定义意图处理；如果仍有歧义，只追问一个最短的澄清问题。
 
 如果用户选择 `Superpowers`，一次性确认两个选择：
 
 - 执行方式：`subagent` 或 `local`。默认推荐 `subagent`，对应 `subagent-driven-development`；`local` 对应当前 agent 使用 `executing-plans`。
 - 工作区：`worktree` 或 `current-branch`。
 
-当用户选择第 2 项，后续确认也改成数字菜单，不要要求输入完整单词。推荐顺序如下：
+当用户选择第 2 项，后续确认也改成“显式选项 + 推荐项 + 可直接回复口令”菜单，不要只给数字或只给一句自由文本。推荐顺序如下：
 
 - 实现路径：
-  1. `Superpowers`
+  1. `Superpowers`（推荐）
+     可直接回复：`使用 Superpowers`
   2. `OpenSpec apply`
+     可直接回复：`使用 OpenSpec apply`
 - 如果选择 `Superpowers`，执行方式：
-  1. `subagent`
+  1. `subagent`（推荐）
+     可直接回复：`使用 subagent`
   2. `local`
+     可直接回复：`使用 local`
 - 工作区：
-  1. `worktree`
+  1. `worktree`（推荐）
+     可直接回复：`使用 worktree`
   2. `current-branch`
+     可直接回复：`使用 current-branch`
   其他：允许用户补充说明特殊工作区安排
 
 `main`/`master` 规则：

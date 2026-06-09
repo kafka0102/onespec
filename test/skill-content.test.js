@@ -63,6 +63,9 @@ test('onespec-design documents proposal and approval routing guardrails', async 
     'rollout / migration / compatibility',
     'non-goals',
     '只有用户明确批准 proposal / design / spec 后，才允许进入实现计划',
+    '显式选项 + 推荐项 + 可直接回复的口令',
+    '可直接回复：`批准，按推荐路径继续`',
+    '可直接回复：`使用 worktree`',
     '`低复杂度`：默认推荐原生 `OpenSpec apply`',
   ]) {
     expectIncludes(skill, expected);
@@ -146,6 +149,14 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   expectIncludes(await readEnglishSkill('onespec-execute'), '# OneSpec Execute');
   expectIncludes(await readEnglishSkill('onespec-archive'), '# OneSpec Archive');
   expectIncludes(await readEnglishSkill('onespec-design'), 'text-only');
+  expectIncludes(
+    await readEnglishSkill('onespec-design'),
+    'explicit options + recommendation + direct reply phrase'
+  );
+  expectIncludes(
+    await readEnglishSkill('onespec-design'),
+    'Direct reply phrase: `approve and use the recommended path`'
+  );
   expectIncludes(await readEnglishSkill('onespec-execute'), 'phase implementing');
   expectIncludes(await readEnglishSkill('onespec-archive'), 'delete worktree and archive');
 });
