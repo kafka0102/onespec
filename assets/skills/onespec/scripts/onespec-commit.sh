@@ -121,6 +121,13 @@ git_dirty_paths() {
   '
 }
 
+dirty_change_artifact_paths() {
+  local change="$1"
+  local dir
+  dir="$(change_dir "$change")"
+  git_dirty_paths | awk -v prefix="$dir/" 'index($0, prefix) == 1 { print }'
+}
+
 repo_layout() {
   if [ -f "pnpm-workspace.yaml" ] || [ -f "nx.json" ] || [ -f "turbo.json" ] || [ -f "lerna.json" ] || [ -f "go.work" ] || [ -f "settings.gradle" ] || [ -f "settings.gradle.kts" ]; then
     echo "multi"
@@ -307,24 +314,33 @@ cmd_related_dirty() {
   valid_change "$change"
   ensure_git_repo
 
-  local tracked state dirty
+  local tracked state dirty artifacts
   tracked="$(mktemp)"
   dirty="$(mktemp)"
+  artifacts="$(mktemp)"
   load_tracked_lines "$change" > "$tracked"
   state="$(state_file "$change")"
   git_dirty_paths | sort_unique_lines > "$dirty"
+  dirty_change_artifact_paths "$change" | sort_unique_lines > "$artifacts"
 
   if grep -Fxq "$state" "$dirty"; then
     printf '%s\n' "$state" >> "$tracked"
   fi
 
+  if [ -s "$artifacts" ]; then
+    cat "$artifacts" >> "$tracked"
+  fi
+
+  sort_unique_lines < "$tracked" > "${tracked}.sorted"
+  mv "${tracked}.sorted" "$tracked"
+
   if [ ! -s "$tracked" ]; then
-    rm -f "$tracked" "$dirty"
+    rm -f "$tracked" "$dirty" "$artifacts"
     return 0
   fi
 
   awk 'NR==FNR { dirty[$0] = 1; next } dirty[$0] { print $0 }' "$dirty" "$tracked" | sort_unique_lines
-  rm -f "$tracked" "$dirty"
+  rm -f "$tracked" "$dirty" "$artifacts"
 }
 
 cmd_stage_related() {

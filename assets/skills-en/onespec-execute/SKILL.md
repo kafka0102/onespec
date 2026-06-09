@@ -86,6 +86,7 @@ Must do:
 ```
 
 - do not add pre-existing dirty files that are unrelated to the current change into that tracked-file list
+- if you generate a temporary zip, export bundle, or other change-local artifact under `openspec/changes/<change-id>/`, keep it as part of the current change until archive; it does not need a separate `touched_files_b64` entry, but auto-commit must include it together with `.onespec.yaml`
 - if auto-commit happens later, `.onespec.yaml` itself must be committed with the change while it is dirty; it is not a disposable file before archive
 
 Record the plan and create handoff:

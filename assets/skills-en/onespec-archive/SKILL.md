@@ -147,6 +147,7 @@ Before archive or worktree deletion is finalized, always check whether there is 
 - if the project defines an explicit policy, follow it
 - if the project does not define a policy, fall back to general Conventional Commits: `<type>(<scope>): <short summary>`
 - only commit the intersection of the tracked-file list stored in `.onespec.yaml` and current dirty files; if `.onespec.yaml` itself is dirty, include it too; never include unrelated changes
+- exception: temporary zip files, export bundles, or other change-local artifacts under `openspec/changes/<change-id>/` are also part of the current change; auto-commit should include them so archive preserves them in change history
 - If code is merged into the target branch and the user chooses archive, run OpenSpec archive immediately and set state to `archived`.
 - If the user deletes the worktree but does not archive yet, set state to `done` and explain that archive can be run later. Do not delete `.onespec.yaml` in that case.
 - Only after archive actually runs should the runtime state file be removed:

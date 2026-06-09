@@ -150,6 +150,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.con
 - 如果项目里存在明确规范，按项目要求处理 commit message 的格式、scope 和语言。
 - 如果项目里没有明确规范，回退到通用 Conventional Commits：`<type>(<scope>): <简要描述>`。
 - 只能提交 `.onespec.yaml` 中记录的 tracked files 与当前脏文件的交集；如果 `.onespec.yaml` 本身是脏的，也应一并提交，不允许把无关改动一并提交。
+- 例外：位于 `openspec/changes/<change-id>/` 下、专属于本次 change 的临时压缩包、导出包或交接工件，也视为本次 change 相关文件；自动提交时要一并带上，这样 archive 后仍能保留在 change 历史里。
 - 如果代码已合并到目标分支且用户选择归档，直接执行 OpenSpec archive，并将状态设为 `archived`。
 - 如果用户当前只删除 worktree、不归档，将状态设为 `done`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
 - 只有真正执行 archive 后，才删除运行时状态文件：

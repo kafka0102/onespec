@@ -101,3 +101,39 @@ test('onespec-commit detects project commit policy before falling back to defaul
   assert.match(stdout, /repo_layout: multi/);
   assert.match(stdout, /scope_hint: web/);
 });
+
+test('onespec-commit includes dirty change artifacts under openspec change directories', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
+
+  await writeFile(path.join(projectPath, 'README.md'), '# Demo\n');
+
+  await git(projectPath, ['init']);
+  await git(projectPath, ['add', 'README.md']);
+  await git(projectPath, ['-c', 'user.name=Test User', '-c', 'user.email=test@example.com', 'commit', '-m', 'init']);
+  await initChangeState(projectPath, 'add-login');
+
+  await writeFile(path.join(projectPath, 'openspec', 'changes', 'add-login', 'proposal.md'), '# Proposal\n');
+  await writeFile(
+    path.join(projectPath, 'openspec', 'changes', 'add-login', 'review-bundle.zip'),
+    'fake zip bytes\n',
+  );
+
+  const { stdout: related } = await execFileAsync('bash', [scriptPath, 'related-dirty', 'add-login'], {
+    cwd: projectPath,
+  });
+
+  assert.deepEqual(related.trim().split('\n').sort(), [
+    'openspec/changes/add-login/.onespec.yaml',
+    'openspec/changes/add-login/proposal.md',
+    'openspec/changes/add-login/review-bundle.zip',
+  ]);
+
+  await execFileAsync('bash', [scriptPath, 'stage-related', 'add-login'], { cwd: projectPath });
+  const { stdout: status } = await git(projectPath, ['status', '--porcelain=v1']);
+  const lines = status.trim().split('\n');
+
+  assert.ok(lines.includes('A  openspec/changes/add-login/.onespec.yaml'));
+  assert.ok(lines.includes('A  openspec/changes/add-login/proposal.md'));
+  assert.ok(lines.includes('A  openspec/changes/add-login/review-bundle.zip'));
+});

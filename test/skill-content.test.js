@@ -87,6 +87,7 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     '.onespec.yaml',
     'touched_files_b64',
     '"$ONESPEC_BASH" "$ONESPEC_COMMIT" track <change-id> <path>...',
+    '临时压缩包、导出包',
     '"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase implementing',
     'origin_branch',
     'origin_workspace_path',
@@ -132,6 +133,7 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     'detect-policy <change-id>',
     'run-actions <change-id> [delete-worktree] [archive]',
     '.onespec.yaml',
+    '临时压缩包、导出包或交接工件',
     'cleanup-runtime <change-id>',
     'archive <skipped|archived>',
   ]) {
@@ -175,7 +177,9 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   expectIncludes(await readEnglishSkill('onespec-execute'), 'numbered next-step menu');
   expectIncludes(await readEnglishSkill('onespec-execute'), 'Anti-Patterns');
   expectIncludes(await readEnglishSkill('onespec-execute'), '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>');
+  expectIncludes(await readEnglishSkill('onespec-execute'), 'temporary zip, export bundle');
   expectIncludes(await readEnglishSkill('onespec-archive'), 'delete worktree and archive');
+  expectIncludes(await readEnglishSkill('onespec-archive'), 'temporary zip files, export bundles');
   expectIncludes(await readEnglishSkill('onespec-design'), 'extensible module');
   assert.doesNotMatch(
     await readEnglishSkill('onespec-archive'),

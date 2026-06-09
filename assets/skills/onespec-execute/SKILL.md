@@ -86,6 +86,7 @@ apply 前至少读取：
 ```
 
 - 不要把用户原本就存在但不属于本次 change 的脏文件写入这个 tracked file 列表。
+- 如果在 `openspec/changes/<change-id>/` 下生成了临时压缩包、导出包或其他仅服务于本次 change 的工件，也要视为本次 change 的一部分保留到 archive；它们不要求单独写进 `touched_files_b64`，但后续自动提交必须把这些工件与 `.onespec.yaml` 一并提交。
 - 后续如果进入自动提交，`.onespec.yaml` 本身也应随当前 change 一起提交；它不是要提前删除的中间产物，而是 review / archive 前的恢复依据。
 
 记录计划并创建交接包：
