@@ -11,6 +11,9 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -18,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22.14.0
           registry-url: https://registry.npmjs.org
 
       - name: Verify tag matches package version
@@ -36,7 +39,12 @@ jobs:
       - name: Preview published files
         run: npm pack --dry-run
 
-      - name: Publish package
-        run: npm publish
+      - name: Publish package with trusted publishing
+        if: ${{ secrets.NPM_TOKEN == '' }}
+        run: npm publish --provenance --access public
+
+      - name: Publish package with npm token fallback
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

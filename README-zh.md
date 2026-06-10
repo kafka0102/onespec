@@ -64,9 +64,10 @@ npx skills add https://github.com/kafka0102/onespec/tree/main/assets/skills -a c
 
 如果要通过 GitHub Actions 发布到 npm：
 
-1. 在仓库 Secrets 中添加 `NPM_TOKEN`，它需要有发布 `@kafka0102/onespec` 的权限。
-2. 更新 `package.json` 里的版本号。
-3. 创建并推送对应版本标签，例如 `v0.1.2`。
+1. 推荐方式：在 npm 里为 `@kafka0102/onespec` 和这个 GitHub 仓库配置 Trusted Publishing。
+2. 兜底方式：如果暂时不用 Trusted Publishing，就在仓库 Secrets 中添加 `NPM_TOKEN`。它必须是 npm 的 granular access token，具备发布 `@kafka0102/onespec` 的权限，并且开启 `bypass 2FA`。
+3. 更新 `package.json` 里的版本号。
+4. 创建并推送对应版本标签，例如 `v0.1.2`。
 
 ```bash
 git tag v0.1.2
@@ -74,3 +75,10 @@ git push origin main --tags
 ```
 
 `.github/workflows/publish.yml` 会在推送 `v*` 标签时触发，校验 tag 与 `package.json` 版本一致，执行 `npm test`，预览发布内容，然后发布到 npm。
+
+这个 workflow 现在同时支持两种发布方式：
+
+1. 如果没有配置 `NPM_TOKEN`，就走 Trusted Publishing。
+2. 如果配置了 `NPM_TOKEN`，就走 token 发布。
+
+如果 npm 报 `E403`，并提示需要 2FA 或者 `granular access token with bypass 2fa enabled`，说明当前 token 不符合 npm 现在的发布策略。要么换成满足要求的 token，要么改用 Trusted Publishing。
