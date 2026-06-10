@@ -123,9 +123,12 @@ git_dirty_paths() {
 
 dirty_change_artifact_paths() {
   local change="$1"
-  local dir
-  dir="$(change_dir "$change")"
-  git_dirty_paths | awk -v prefix="$dir/" 'index($0, prefix) == 1 { print }'
+  local active_prefix archive_prefix
+  active_prefix="openspec/changes/$change/"
+  archive_prefix="openspec/changes/archive/$change/"
+  git_dirty_paths | awk -v active="$active_prefix" -v archived="$archive_prefix" '
+    index($0, active) == 1 || index($0, archived) == 1 { print }
+  '
 }
 
 repo_layout() {
@@ -281,6 +284,75 @@ infer_scope() {
   rm -f "$tracked"
 }
 
+valid_commit_context() {
+  case "$1" in
+    closeout|archive|preserve-state) ;;
+    *)
+      die "unsupported commit context: $1"
+      ;;
+  esac
+}
+
+policy_value() {
+  local policy="$1"
+  local key="$2"
+  printf '%s\n' "$policy" | awk -F ': ' -v key="$key" '$1 == key { print $2; exit }'
+}
+
+default_commit_summary() {
+  local change="$1"
+  local context="$2"
+  local language="$3"
+
+  case "$context" in
+    closeout)
+      if [ "$language" = "zh" ]; then
+        printf '提交 %s 收尾前改动\n' "$change"
+      else
+        printf 'record %s before closeout\n' "$change"
+      fi
+      ;;
+    archive)
+      if [ "$language" = "zh" ]; then
+        printf '归档 %s\n' "$change"
+      else
+        printf 'archive %s\n' "$change"
+      fi
+      ;;
+    preserve-state)
+      if [ "$language" = "zh" ]; then
+        printf '保存 %s 收尾状态\n' "$change"
+      else
+        printf 'preserve %s closeout state\n' "$change"
+      fi
+      ;;
+  esac
+}
+
+build_commit_message() {
+  local change="$1"
+  local context="$2"
+  local policy language scope summary
+
+  valid_commit_context "$context"
+  policy="$(cmd_detect_policy "$change")"
+  language="$(policy_value "$policy" message_language)"
+  scope="$(policy_value "$policy" scope_hint)"
+  [ -n "$language" ] || language="en"
+  [ -n "$scope" ] || scope="repo"
+  case "$context" in
+    archive|preserve-state)
+      scope="docs"
+      ;;
+  esac
+  summary="$(default_commit_summary "$change" "$context" "$language")"
+  printf 'chore(%s): %s\n' "$scope" "$summary"
+}
+
+has_staged_changes() {
+  ! git diff --cached --quiet --exit-code
+}
+
 cmd_track() {
   local change="$1"
   shift
@@ -403,6 +475,49 @@ template: <type>(<scope>): <summary>
 EOF
 }
 
+cmd_commit_related() {
+  local change="$1"
+  local context="${2:-closeout}"
+  local related message sha
+
+  valid_change "$change"
+  valid_commit_context "$context"
+  ensure_git_repo
+
+  related="$(cmd_related_dirty "$change")"
+  if [ -z "$related" ]; then
+    cat <<EOF
+commit_created: false
+commit_context: $context
+commit_sha: none
+commit_message: none
+EOF
+    return 0
+  fi
+
+  cmd_stage_related "$change" >/dev/null
+  if ! has_staged_changes; then
+    cat <<EOF
+commit_created: false
+commit_context: $context
+commit_sha: none
+commit_message: none
+EOF
+    return 0
+  fi
+
+  message="$(build_commit_message "$change" "$context")"
+  git commit -m "$message" >/dev/null
+  sha="$(git rev-parse HEAD)"
+
+  cat <<EOF
+commit_created: true
+commit_context: $context
+commit_sha: $sha
+commit_message: $message
+EOF
+}
+
 usage() {
   cat <<'EOF'
 用法:
@@ -411,6 +526,7 @@ usage() {
   onespec-commit.sh related-dirty <change>
   onespec-commit.sh stage-related <change>
   onespec-commit.sh detect-policy [change]
+  onespec-commit.sh commit-related <change> [closeout|archive|preserve-state]
 EOF
 }
 
@@ -436,6 +552,10 @@ case "$cmd" in
   detect-policy)
     [ "$#" -le 2 ] || { usage; exit 2; }
     cmd_detect_policy "${2:-}"
+    ;;
+  commit-related)
+    [ "$#" -ge 2 ] && [ "$#" -le 3 ] || { usage; exit 2; }
+    cmd_commit_related "$2" "${3:-closeout}"
     ;;
   *)
     usage

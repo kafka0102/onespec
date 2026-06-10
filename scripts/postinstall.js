@@ -16,9 +16,9 @@ function main() {
   }
 
   console.log('\nOneSpec installed. Next run:');
-  console.log('  onespec init --scope global --yes');
-  console.log('or for the current project:');
-  console.log('  onespec init . --scope project --yes\n');
+  console.log('  onespec init');
+  console.log('or non-interactive:');
+  console.log('  onespec init . --platform codex --scope project --yes\n');
 }
 
 try {

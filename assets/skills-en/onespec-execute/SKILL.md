@@ -196,13 +196,15 @@ Current branch: <branch>
 Current workspace: <path>
 Origin: <origin_branch> @ <origin_workspace_path>
 
-1. Enter `onespec-archive` and choose delete-worktree / archive actions
+1. Delete the worktree and archive
 2. Keep the current branch / worktree as-is and stop here for now
 Other: any non-numbered content means continue modifying the current implementation; if the intent is outside the menu, the user may also describe it directly
 ---
 ```
 
 If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
+
+That `1` is itself the explicit authorization for `delete worktree and archive`. After the user replies `1`, do not show a second closeout menu after handing off to `onespec-archive`; only continue with the required checks and execute the matching closeout action.
 
 Do not stop at an abstract note such as "the next step is `onespec-archive`" or just "do review-closeout". You must also give the user a concrete numbered menu.
 
@@ -213,7 +215,7 @@ The following are gate violations:
 - reporting "done" without first running the scripts in 5.1
 - omitting current branch / workspace information from the report
 - omitting a concrete numbered next-step menu
-- mixing archive, merge, or worktree-deletion actions into the implementation-complete report
+- executing archive, merge, or worktree-deletion actions before the user has chosen one
 - entering `onespec-archive` before the user replies
 - replacing the concrete numbered menu with an abstract "next step is onespec-archive" statement
 - deleting a temporary worktree before review is complete and the user explicitly asks for closeout

@@ -62,6 +62,10 @@ current_workspace_path() {
   pwd -P
 }
 
+script_dir() {
+  cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P
+}
+
 canonicalize_path() {
   local input="$1"
   if [ -z "$input" ] || [ "$input" = "unknown" ] || [ ! -d "$input" ]; then
@@ -94,6 +98,10 @@ state_destination_in_origin() {
   [ -n "$origin_path" ] || die "origin workspace path is empty"
   [ "$origin_path" != "unknown" ] || die "origin workspace path is unknown"
   printf '%s/openspec/changes/%s/.onespec.yaml\n' "$origin_path" "$change"
+}
+
+origin_workspace_path_for_change() {
+  canonicalize_path "$(get_state_value "$1" origin_workspace_path)"
 }
 
 normalize_action() {
@@ -294,6 +302,22 @@ delete_current_worktree() {
   printf '%s\n' "$current_path"
 }
 
+commit_field() {
+  local payload="$1"
+  local key="$2"
+  printf '%s\n' "$payload" | awk -F ': ' -v key="$key" '$1 == key { sub(/^[^:]+: /, ""); print; exit }'
+}
+
+run_commit_related() {
+  local workspace="$1"
+  local change="$2"
+  local context="$3"
+  (
+    cd "$workspace"
+    "${BASH:-bash}" "$(script_dir)/onespec-commit.sh" commit-related "$change" "$context"
+  )
+}
+
 cmd_run_actions() {
   local change="$1"
   shift
@@ -301,6 +325,7 @@ cmd_run_actions() {
   ensure_git_repo
 
   local validation selected valid archive_selected delete_selected preserved_state removed_worktree
+  local pre_closeout_commit post_archive_commit preserved_state_commit origin_workspace_path
   validation="$(cmd_validate_actions "$change" "$@")"
   selected="$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "selected_actions" { print $2 }')"
   valid="$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "valid" { print $2 }')"
@@ -319,24 +344,32 @@ cmd_run_actions() {
 
   preserved_state=""
   removed_worktree=""
+  pre_closeout_commit="$(run_commit_related "$(current_workspace_path)" "$change" closeout)"
+  post_archive_commit='commit_created: false
+commit_context: archive
+commit_sha: none
+commit_message: none'
+  preserved_state_commit='commit_created: false
+commit_context: preserve-state
+commit_sha: none
+commit_message: none'
 
   # Safe order: archive first, then delete the temporary worktree.
   if [ "$archive_selected" = "true" ]; then
     run_archive_command "$change"
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
-    "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" phase archived
-    "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" archive archived
-    "${BASH:-bash}" "$script_dir/onespec-closeout.sh" cleanup-runtime "$change" >/dev/null
+    "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" phase archived
+    "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" archive archived
+    "${BASH:-bash}" "$(script_dir)/onespec-closeout.sh" cleanup-runtime "$change" >/dev/null
+    post_archive_commit="$(run_commit_related "$(current_workspace_path)" "$change" archive)"
   fi
 
   if [ "$delete_selected" = "true" ]; then
     if [ "$archive_selected" != "true" ]; then
-      local script_dir
-      script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
-      "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" phase done
-      "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" archive skipped
+      "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" phase done
+      "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" archive skipped
       preserved_state="$(preserve_runtime_state_in_origin "$change")"
+      origin_workspace_path="$(origin_workspace_path_for_change "$change")"
+      preserved_state_commit="$(run_commit_related "$origin_workspace_path" "$change" preserve-state)"
     fi
     removed_worktree="$(delete_current_worktree)"
   fi
@@ -345,6 +378,12 @@ cmd_run_actions() {
 selected_actions: $selected
 archive_executed: $archive_selected
 worktree_deleted: $delete_selected
+pre_closeout_commit_created: $(commit_field "$pre_closeout_commit" commit_created)
+pre_closeout_commit_sha: $(commit_field "$pre_closeout_commit" commit_sha)
+post_archive_commit_created: $(commit_field "$post_archive_commit" commit_created)
+post_archive_commit_sha: $(commit_field "$post_archive_commit" commit_sha)
+preserved_state_commit_created: $(commit_field "$preserved_state_commit" commit_created)
+preserved_state_commit_sha: $(commit_field "$preserved_state_commit" commit_sha)
 preserved_state_file: ${preserved_state:-none}
 deleted_worktree_path: ${removed_worktree:-none}
 EOF

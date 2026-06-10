@@ -46,6 +46,13 @@ async function writeFakeArchiveBin(projectPath) {
     `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "${logPath}"
+change="$2"
+if [ -d "openspec/changes/$change" ]; then
+  mkdir -p "openspec/changes/archive"
+  rm -rf "openspec/changes/archive/$change"
+  mv "openspec/changes/$change" "openspec/changes/archive/$change"
+  printf 'archived\\n' > "openspec/changes/archive/$change/archive-note.txt"
+fi
 `,
     { mode: 0o755 },
   );
@@ -250,6 +257,7 @@ test('onespec-closeout cleanup-runtime removes the single runtime state file onl
 test('onespec-closeout run-actions executes archive once and removes runtime state on the target branch', async () => {
   const projectPath = await tmpProject();
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const commitScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
   const statePath = path.join(projectPath, 'openspec', 'changes', 'archive-run', '.onespec.yaml');
   const { scriptPath: archiveBin, logPath } = await writeFakeArchiveBin(projectPath);
 
@@ -260,6 +268,13 @@ test('onespec-closeout run-actions executes archive once and removes runtime sta
     origin_workspace_mode: 'current-branch',
   });
   await advanceChangeToReview(projectPath, 'archive-run');
+  await mkdir(path.join(projectPath, 'src'), { recursive: true });
+  await writeFile(path.join(projectPath, 'src', 'app.js'), 'console.log("v1");\n');
+  await execFileAsync('git', ['add', 'src/app.js'], { cwd: projectPath });
+  await execFileAsync('git', ['commit', '-m', 'seed app'], { cwd: projectPath });
+  await execFileAsync('bash', [commitScriptPath, 'track', 'archive-run', 'src/app.js'], { cwd: projectPath });
+  await writeFile(path.join(projectPath, 'src', 'app.js'), 'console.log("v2");\n');
+  await writeFile(path.join(projectPath, 'openspec', 'changes', 'archive-run', 'proposal.md'), '# Proposal\n');
 
   const { stdout } = await execFileAsync(
     'bash',
@@ -273,8 +288,20 @@ test('onespec-closeout run-actions executes archive once and removes runtime sta
   assert.match(stdout, /selected_actions: archive/);
   assert.match(stdout, /archive_executed: true/);
   assert.match(stdout, /worktree_deleted: false/);
+  assert.match(stdout, /pre_closeout_commit_created: true/);
+  assert.match(stdout, /post_archive_commit_created: true/);
+  assert.match(stdout, /preserved_state_commit_created: false/);
   assert.match(await readFile(logPath, 'utf8'), /archive archive-run --yes/);
   await assert.rejects(access(statePath));
+
+  const { stdout: subjects } = await execFileAsync('git', ['log', '-2', '--pretty=%s'], { cwd: projectPath });
+  assert.deepEqual(subjects.trim().split('\n'), [
+    'chore(docs): archive archive-run',
+    'chore(src): record archive-run before closeout',
+  ]);
+
+  const { stdout: status } = await execFileAsync('git', ['status', '--porcelain=v1'], { cwd: projectPath });
+  assert.deepEqual(status.trim().split('\n').sort(), ['?? archive.log', '?? fake-openspec.sh']);
 });
 
 test('onespec-closeout run-actions deletes a temporary worktree and preserves runtime state in origin workspace', async () => {
@@ -282,6 +309,7 @@ test('onespec-closeout run-actions deletes a temporary worktree and preserves ru
   const worktreePath = await tmpProject('onespec-closeout-wt-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
   const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+  const commitScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
   const preservedStatePath = path.join(projectPath, 'openspec', 'changes', 'preserve-login', '.onespec.yaml');
 
   await initGitRepo(projectPath);
@@ -311,6 +339,12 @@ test('onespec-closeout run-actions deletes a temporary worktree and preserves ru
     { cwd: worktreePath },
   );
   await advanceChangeToReview(worktreePath, 'preserve-login');
+  await mkdir(path.join(worktreePath, 'src'), { recursive: true });
+  await writeFile(path.join(worktreePath, 'src', 'feature.js'), 'export const feature = 1;\n');
+  await execFileAsync('git', ['add', 'src/feature.js'], { cwd: worktreePath });
+  await execFileAsync('git', ['commit', '-m', 'seed feature'], { cwd: worktreePath });
+  await execFileAsync('bash', [commitScriptPath, 'track', 'preserve-login', 'src/feature.js'], { cwd: worktreePath });
+  await writeFile(path.join(worktreePath, 'src', 'feature.js'), 'export const feature = 2;\n');
 
   const { stdout } = await execFileAsync(
     'bash',
@@ -321,9 +355,25 @@ test('onespec-closeout run-actions deletes a temporary worktree and preserves ru
   assert.match(stdout, /selected_actions: delete-worktree/);
   assert.match(stdout, /archive_executed: false/);
   assert.match(stdout, /worktree_deleted: true/);
+  assert.match(stdout, /pre_closeout_commit_created: true/);
+  assert.match(stdout, /post_archive_commit_created: false/);
+  assert.match(stdout, /preserved_state_commit_created: true/);
   await assert.rejects(access(worktreePath));
 
   const preservedState = await readFile(preservedStatePath, 'utf8');
   assert.match(preservedState, /phase: done/);
   assert.match(preservedState, /archive: skipped/);
+
+  const { stdout: originStatus } = await execFileAsync('git', ['status', '--porcelain=v1'], { cwd: projectPath });
+  assert.equal(originStatus.trim(), '');
+
+  const { stdout: originSubject } = await execFileAsync('git', ['log', '-1', '--pretty=%s'], { cwd: projectPath });
+  assert.equal(originSubject.trim(), 'chore(docs): preserve preserve-login closeout state');
+
+  const { stdout: branchSubject } = await execFileAsync(
+    'git',
+    ['log', 'feature/preserve-login', '-1', '--pretty=%s'],
+    { cwd: projectPath },
+  );
+  assert.equal(branchSubject.trim(), 'chore(src): record preserve-login before closeout');
 });

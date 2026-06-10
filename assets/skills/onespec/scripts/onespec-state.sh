@@ -272,8 +272,8 @@ cmd_recover() {
     review)
       next_skill="onespec-archive"
       next_gate="user-review-closeout"
-      allowed_actions="request-changes,choose-archive-menu,direct-instruction"
-      next_step="等待用户评审；若用户回复非编号内容则继续修改，若选择归档菜单则进入 \`onespec-archive\` 处理删除 worktree / 归档组合选项"
+      allowed_actions="request-changes,choose-closeout-action,direct-instruction"
+      next_step="等待用户评审；若用户回复非编号内容则继续修改，若用户明确选择收尾动作，则进入 \`onespec-archive\` 直接执行对应 closeout"
       ;;
     done|archived)
       next_skill="onespec-archive"

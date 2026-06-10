@@ -23,126 +23,52 @@ The bundle itself is plain `SKILL.md` plus shell scripts, so it can be ported to
 
 ## Install
 
-### 1. Install the CLI
+Prerequisites:
+
+- Node.js 20+
+- npm / npx
+- Git
+- A shell environment with `bash`
 
 ```bash
 npm install -g @kafka0102/onespec
 ```
 
-Or run it directly with `npx`:
+You can also run it directly with `npx`.
+
+## Quick Start
 
 ```bash
-npx @kafka0102/onespec init . --scope project --language en
+cd your-project
+onespec init
 ```
 
-### 2. Install the bundled OneSpec skills into your agent
+`onespec init` will:
 
-Supported platform ids:
+1. Guide you to choose one or more AI platforms: `codex`, `claude-code`, `cursor`, `gemini-cli`, or `github-copilot`
+2. Choose the install scope: project or global
+3. Choose the OneSpec skill language: `zh` or `en`
+4. Automatically install OpenSpec CLI when needed
+5. Automatically initialize OpenSpec for the selected platforms
+6. Automatically install Superpowers skills for the selected platforms
+7. Deploy the bundled OneSpec skills: `onespec`, `onespec-design`, `onespec-execute`, `onespec-archive`
+8. Create `docs/superpowers/specs/` and `docs/superpowers/plans/` for project installs
 
-- `codex`
-- `claude-code`
-- `cursor`
-- `gemini-cli`
-- `github-copilot`
-
-Project install for Codex:
-
-```bash
-onespec init . --scope project --language en --yes
-```
-
-Global install for Codex:
+Common non-interactive examples:
 
 ```bash
-onespec init --scope global --language en --yes
-```
-
-Project install for Claude Code:
-
-```bash
+onespec init . --platform codex --scope project --language en --yes
 onespec init . --platform claude-code --scope project --language en --yes
-```
-
-Global install for Claude Code:
-
-```bash
-onespec init --platform claude-code --scope global --language en --yes
-```
-
-Project install for Cursor, Gemini CLI, or GitHub Copilot:
-
-```bash
-onespec init . --platform cursor --scope project --language en --yes
-onespec init . --platform gemini-cli --scope project --language en --yes
-onespec init . --platform github-copilot --scope project --language en --yes
-```
-
-Global install for Cursor, Gemini CLI, or GitHub Copilot:
-
-```bash
+onespec init . --platform codex,cursor --scope project --language en --yes
 onespec init --platform cursor --scope global --language en --yes
-onespec init --platform gemini-cli --scope global --language en --yes
-onespec init --platform github-copilot --scope global --language en --yes
 ```
 
-Project skill locations:
+If the target is not the detected default platform, pass `--platform` explicitly. Use a comma-separated list to install into multiple agents.
 
-- Codex, Cursor, Gemini CLI, GitHub Copilot: `.agents/skills/`
-- Claude Code: `.claude/skills/`
-
-If you omit `--yes`, `onespec init` runs in interactive mode and can prompt for overwrite, language, scope, OpenSpec CLI setup, and Superpowers installation. Use `--platform` whenever you target a non-default agent.
-
-### 3. Install the required Superpowers skills
-
-For the full workflow, install Superpowers for the same agent:
-
-```bash
-npx skills add obra/superpowers -a codex -y
-```
-
-For global Codex usage:
-
-```bash
-npx skills add obra/superpowers -a codex -g -y
-```
-
-For Claude Code:
-
-```bash
-npx skills add obra/superpowers -a claude-code -y
-```
-
-For global Claude Code usage:
-
-```bash
-npx skills add obra/superpowers -a claude-code -g -y
-```
-
-For Cursor:
-
-```bash
-npx skills add obra/superpowers -a cursor -y
-```
-
-For Gemini CLI:
-
-```bash
-npx skills add obra/superpowers -a gemini-cli -y
-```
-
-For GitHub Copilot:
-
-```bash
-npx skills add obra/superpowers -a github-copilot -y
-```
-
-### 4. Initialize OpenSpec in the project
-
-If the target project does not already have an OpenSpec workspace:
-
-```bash
-openspec init .
-```
+> [!TIP]
+> Update
+>
+> Run `npm install -g @kafka0102/onespec@latest` to update to the latest version.
 
 ## How To Use
 

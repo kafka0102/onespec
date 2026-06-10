@@ -23,126 +23,52 @@ OneSpec 是一个面向 agent 的 skill bundle 和 CLI，用来执行 OpenSpec +
 
 ## 安装
 
-### 1. 安装 CLI
+前置要求：
+
+- Node.js 20+
+- npm / npx
+- Git
+- 可运行 bash 的 shell 环境
 
 ```bash
 npm install -g @kafka0102/onespec
 ```
 
-也可以直接通过 `npx` 运行：
+也可以直接通过 `npx` 运行。
+
+## 快速开始
 
 ```bash
-npx @kafka0102/onespec init . --scope project --language zh
+cd your-project
+onespec init
 ```
 
-### 2. 把 OneSpec 内置 skill 安装到你的 agent
+`onespec init` 会：
 
-支持的 `--platform` 标识：
+1. 引导选择要安装到哪些 AI 平台，支持多选：`codex`、`claude-code`、`cursor`、`gemini-cli`、`github-copilot`
+2. 选择安装范围：项目级（当前目录）或全局（用户主目录）
+3. 选择 OneSpec skill 语言：`zh` 或 `en`
+4. 自动补齐 OpenSpec CLI
+5. 自动为所选平台初始化 OpenSpec
+6. 自动为所选平台安装 Superpowers skills
+7. 部署 OneSpec 内置 skills：`onespec`、`onespec-design`、`onespec-execute`、`onespec-archive`
+8. 在项目级安装时创建 `docs/superpowers/specs/` 和 `docs/superpowers/plans/` 工作目录
 
-- `codex`
-- `claude-code`
-- `cursor`
-- `gemini-cli`
-- `github-copilot`
-
-安装到当前项目的 Codex：
-
-```bash
-onespec init . --scope project --language zh --yes
-```
-
-全局安装到 Codex：
+常用非交互示例：
 
 ```bash
-onespec init --scope global --language zh --yes
-```
-
-安装到当前项目的 Claude Code：
-
-```bash
+onespec init . --platform codex --scope project --language zh --yes
 onespec init . --platform claude-code --scope project --language zh --yes
-```
-
-全局安装到 Claude Code：
-
-```bash
-onespec init --platform claude-code --scope global --language zh --yes
-```
-
-安装到当前项目的 Cursor / Gemini CLI / GitHub Copilot：
-
-```bash
-onespec init . --platform cursor --scope project --language zh --yes
-onespec init . --platform gemini-cli --scope project --language zh --yes
-onespec init . --platform github-copilot --scope project --language zh --yes
-```
-
-全局安装到 Cursor / Gemini CLI / GitHub Copilot：
-
-```bash
+onespec init . --platform codex,cursor --scope project --language zh --yes
 onespec init --platform cursor --scope global --language zh --yes
-onespec init --platform gemini-cli --scope global --language zh --yes
-onespec init --platform github-copilot --scope global --language zh --yes
 ```
 
-项目级 skill 目录：
+如果目标不是默认检测到的平台，请显式加上 `--platform`。需要安装到多个 agent 时，用逗号分隔即可。
 
-- Codex、Cursor、Gemini CLI、GitHub Copilot：`.agents/skills/`
-- Claude Code：`.claude/skills/`
-
-如果不加 `--yes`，`onespec init` 会进入交互模式，依次询问安装范围、语言、是否覆盖、是否补装 OpenSpec CLI，以及是否安装 Superpowers。要安装到非默认平台，请显式加上 `--platform`。
-
-### 3. 安装必需的 Superpowers skill
-
-完整工作流依赖与当前 agent 对应的 Superpowers：
-
-```bash
-npx skills add obra/superpowers -a codex -y
-```
-
-如果你按全局方式使用 Codex：
-
-```bash
-npx skills add obra/superpowers -a codex -g -y
-```
-
-如果你使用 Claude Code：
-
-```bash
-npx skills add obra/superpowers -a claude-code -y
-```
-
-如果你按全局方式使用 Claude Code：
-
-```bash
-npx skills add obra/superpowers -a claude-code -g -y
-```
-
-如果你使用 Cursor：
-
-```bash
-npx skills add obra/superpowers -a cursor -y
-```
-
-如果你使用 Gemini CLI：
-
-```bash
-npx skills add obra/superpowers -a gemini-cli -y
-```
-
-如果你使用 GitHub Copilot：
-
-```bash
-npx skills add obra/superpowers -a github-copilot -y
-```
-
-### 4. 初始化 OpenSpec 项目
-
-如果目标项目还没有 OpenSpec 工作区：
-
-```bash
-openspec init .
-```
+> [!TIP]
+> 更新版本
+>
+> 执行 `npm install -g @kafka0102/onespec@latest` 即可更新到最新版本。
 
 ## 如何使用
 
@@ -168,7 +94,7 @@ onespec doctor . --scope project
 - 开始实现或继续实现：`onespec-execute`
 - 评审、收尾、删除 worktree、归档：`onespec-archive`
 
-对于未被 `onespec init` / `onespec doctor` 官方接管的 agent，如果它支持 `SKILL.md`，也可以手动复制技能包到对应目录；只是当前 CLI 不会替你做环境校验。
+对于未被 `onespec init` / `onespec doctor` 官方接管的 agent，如果它支持 `SKILL.md`，也可以手动复制技能包到对应目录；只是当前 CLI 不会替你做环境校验，也不会替你自动安装到这些未接管平台。
 
 ## 流程执行过程
 

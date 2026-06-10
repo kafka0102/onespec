@@ -149,12 +149,18 @@ export async function doctorProject(projectPath, options = {}) {
     );
   }
   if (!openspecCli.available) {
-    nextSteps.push('未找到 OpenSpec CLI，请安装 OpenSpec CLI 并在目标项目运行 `openspec init`。');
+    nextSteps.push(
+      `未找到 OpenSpec CLI。运行 \`onespec init --platform ${platform.id} --scope ${scope}\` 让 OneSpec 自动安装并初始化 OpenSpec。`,
+    );
   } else if (scope === 'project' && !openSpecProjectInstalled) {
-    nextSteps.push('当前项目尚未初始化 OpenSpec，请先运行 `openspec init`。');
+    nextSteps.push(
+      `当前项目尚未初始化 OpenSpec。请重新运行 \`onespec init --platform ${platform.id} --scope project\` 让 OneSpec 自动补齐。`,
+    );
   }
   if (!superpowers.available) {
-    nextSteps.push(`缺少 Superpowers Skills：${missing.join(', ')}。请先安装 Superpowers。`);
+    nextSteps.push(
+      `缺少 Superpowers Skills：${missing.join(', ')}。运行 \`onespec init --platform ${platform.id} --scope ${scope}\` 让 OneSpec 自动补齐。`,
+    );
   }
   if (nextSteps.length === 0) {
     nextSteps.push(`环境检查通过。可以在 ${platform.name} 中使用 \`onespec\` 工作流。`);

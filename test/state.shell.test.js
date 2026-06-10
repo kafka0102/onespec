@@ -172,5 +172,5 @@ test('onespec-state review recovery tells the user how to enter closeout', async
   assert.match(recovery, /进入 `onespec-archive`/);
   assert.match(recovery, /next_skill: onespec-archive/);
   assert.match(recovery, /next_gate: user-review-closeout/);
-  assert.match(recovery, /allowed_actions: request-changes,choose-archive-menu,direct-instruction/);
+  assert.match(recovery, /allowed_actions: request-changes,choose-closeout-action,direct-instruction/);
 });

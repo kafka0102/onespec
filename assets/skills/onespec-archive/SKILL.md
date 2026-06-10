@@ -49,7 +49,9 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 开发完成后不需要再次让用户确认是否 review，也不需要展示常规“继续评审 / 保留分支”类选项。只需询问是否进行归档；如果用户回复任意非编号内容，默认视为“继续修改当前实现”，直接回到代码处理环节。
 
-不要让用户自己猜“下一步该输入什么”。进入 `onespec-archive` 时，必须给出可直接回复的编号选项；如果支持多动作组合，允许用户回复逗号分隔的数字，例如 `1,3`。
+不要让用户自己猜“下一步该输入什么”。如果用户是直接进入 `onespec-archive`，尚未做收尾选择，则必须给出可直接回复的编号选项；如果支持多动作组合，允许用户回复逗号分隔的数字，例如 `1,3`。
+
+如果用户是从 `onespec-execute` 的完成汇报进入这里，并且已经回复了收尾编号，则把那次回复视为唯一有效授权，不得再次展示一轮“删除 worktree / 归档”菜单。此时只需汇报必要状态检查，并直接执行用户已选定的收尾动作。
 
 进入收尾选择前，必须显式向用户汇报：
 
@@ -124,6 +126,8 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - 用户回复多项编号，如 `1,3`：按组合规则校验。合法时按安全执行顺序运行；不合法时明确指出冲突原因。
 - 用户输入数字外的自由文本：默认视为继续修改当前实现，直接回到代码处理环节；只有意图不清晰时才补一个最短澄清问题。
 
+如果用户之前已经在 `onespec-execute` 的完成菜单里选了 `1`、`2` 或 `3`，则这里不再重复上述菜单，而是直接按已选动作继续。
+
 ## 3. 归档规则
 
 进入 archive 或删除 worktree 的最终收尾前，必须检查当前是否仍有“与本次 change 相关的未提交代码”：
@@ -134,11 +138,10 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 - 如果结果为空，继续后续收尾。
 - 如果结果为空，即使工作区里还有无关未跟踪目录，也不要阻塞收尾；例如未记录到 `.onespec.yaml` tracked file 列表里的 `.superpowers/` 可以明确说明“未纳入本次提交”，但不应视为本次 change 的阻塞项。
-- 如果结果非空，先向用户明确提示这些文件尚未提交，并暂停归档。
-- 若用户要求现在提交，只能 stage 本次 change 相关文件：
+- 如果结果非空，不要停在“请你自己先提交”这一步。收尾脚本必须自动提交这些文件，而且只能提交本次 change 相关文件：
 
 ```bash
-"$ONESPEC_BASH" "$ONESPEC_COMMIT" stage-related <change-id>
+"$ONESPEC_BASH" "$ONESPEC_COMMIT" commit-related <change-id> <closeout|archive|preserve-state>
 ```
 
 - 提交信息优先遵循项目自身指定的 Git 提交策略。先探测项目内文档和配置：
@@ -151,6 +154,11 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - 如果项目里没有明确规范，回退到通用 Conventional Commits：`<type>(<scope>): <简要描述>`。
 - 只能提交 `.onespec.yaml` 中记录的 tracked files 与当前脏文件的交集；如果 `.onespec.yaml` 本身是脏的，也应一并提交，不允许把无关改动一并提交。
 - 例外：位于 `openspec/changes/<change-id>/` 下、专属于本次 change 的临时压缩包、导出包或交接工件，也视为本次 change 相关文件；自动提交时要一并带上，这样 archive 后仍能保留在 change 历史里。
+- 自动提交只覆盖 closeout 所需的本地 commit，不代表获得了 merge / rebase / push 授权；这些动作仍然必须由用户单独明确要求。
+- 推荐顺序：
+  1. closeout 前先自动提交当前工作区里与本次 change 相关的脏文件。
+  2. 如果 archive 产生了新的归档工件或删除了 `.onespec.yaml`，archive 之后再自动补一笔归档提交。
+  3. 如果只是删除临时 worktree，则在 origin 工作区保留状态文件后，再自动提交这份保留状态。
 - 如果代码已合并到目标分支且用户选择归档，直接执行 OpenSpec archive，并将状态设为 `archived`。
 - 如果用户当前只删除 worktree、不归档，将状态设为 `done`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
 - 只有真正执行 archive 后，才删除运行时状态文件：

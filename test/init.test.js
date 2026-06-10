@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, stat } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -8,6 +8,11 @@ import { promisify } from 'node:util';
 
 import { initProject } from '../src/init.js';
 import { getProjectSkillDir } from '../src/platforms.js';
+import {
+  buildOpenSpecInitCommand,
+  buildSuperpowersInstallCommand,
+  initWorkspace,
+} from '../src/setup.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -19,6 +24,12 @@ const BUNDLED_SKILLS = ['onespec', 'onespec-design', 'onespec-execute', 'onespec
 
 function projectSkillPath(projectPath, platform, ...parts) {
   return path.join(getProjectSkillDir(projectPath, platform), ...parts);
+}
+
+async function createFakeExecutable(binDir, name, source) {
+  const filePath = path.join(binDir, name);
+  await writeFile(filePath, source, 'utf8');
+  await chmod(filePath, 0o755);
 }
 
 test('initProject installs bundled OneSpec skills and creates working directories', async () => {
@@ -75,22 +86,57 @@ test('initProject installs bundled OneSpec skills and creates working directorie
 
 test('CLI init installs Chinese OneSpec skill with json output', async () => {
   const projectPath = await tmpProject();
+  const binDir = await mkdtemp(path.join(os.tmpdir(), 'onespec-bin-'));
+  const logPath = path.join(binDir, 'tool.log');
+
+  await createFakeExecutable(
+    binDir,
+    'openspec',
+    `#!/bin/sh
+echo "openspec:$@" >> "${logPath}"
+if [ "$1" = "init" ]; then
+  mkdir -p "$2/openspec"
+fi
+`,
+  );
+  await createFakeExecutable(
+    binDir,
+    'npx',
+    `#!/bin/sh
+echo "npx:$@" >> "${logPath}"
+`,
+  );
 
   const { stdout } = await execFileAsync(
     process.execPath,
-    ['bin/onespec.js', 'init', projectPath, '--yes', '--json'],
-    { cwd: path.resolve('.') },
+    ['bin/onespec.js', 'init', projectPath, '--platform', 'codex,cursor', '--yes', '--json'],
+    {
+      cwd: path.resolve('.'),
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH}`,
+      },
+    },
   );
   const result = JSON.parse(stdout);
   const skill = await readFile(projectSkillPath(projectPath, 'codex', 'onespec', 'SKILL.md'), 'utf8');
+  const cursorSkill = await readFile(
+    projectSkillPath(projectPath, 'cursor', 'onespec', 'SKILL.md'),
+    'utf8',
+  );
+  const toolLog = await readFile(logPath, 'utf8');
 
-  assert.equal(result.platform, 'codex');
+  assert.deepEqual(result.platforms, ['codex', 'cursor']);
   assert.equal(result.scope, 'project');
   assert.equal(result.language, 'zh');
-  assert.equal(result.installedSkill, true);
-  assert.deepEqual(result.installedSkills, BUNDLED_SKILLS);
+  assert.equal(result.openspecCli.status, 'present');
+  assert.equal(result.results.length, 2);
   assert.match(skill, /OneSpec 工作流/);
+  assert.match(cursorSkill, /OneSpec 工作流/);
   assert.doesNotMatch(skill, /Language for/);
+  assert.match(toolLog, /openspec:init/);
+  assert.match(toolLog, /--tools codex,cursor/);
+  assert.match(toolLog, /npx:skills add obra\/superpowers -y --agent codex --agent cursor/);
 });
 
 test('initProject can install English skill overlays', async () => {
@@ -221,3 +267,99 @@ for (const platform of [
     assert.match(routerSkill, /\$HOME"\/\.cursor|\$HOME"\/\.gemini|\$HOME"\/\.copilot/);
   });
 }
+
+test('buildOpenSpecInitCommand targets selected platforms and scope', async () => {
+  const command = buildOpenSpecInitCommand('/tmp/project', ['codex', 'cursor'], 'project', '/tmp/home');
+  const globalCommand = buildOpenSpecInitCommand(
+    '/tmp/project',
+    ['claude-code'],
+    'global',
+    '/tmp/home',
+  );
+
+  assert.equal(command.command, 'openspec');
+  assert.deepEqual(command.args, ['init', '/tmp/project', '--tools', 'codex,cursor']);
+  assert.deepEqual(globalCommand.args, ['init', '/tmp/home', '--tools', 'claude-code']);
+});
+
+test('buildSuperpowersInstallCommand uses repeated agent flags', async () => {
+  const command = buildSuperpowersInstallCommand(['codex', 'cursor'], 'project');
+  const globalCommand = buildSuperpowersInstallCommand(['github-copilot'], 'global');
+
+  assert.match(command.command, /^npx/);
+  assert.deepEqual(command.args, [
+    'skills',
+    'add',
+    'obra/superpowers',
+    '-y',
+    '--agent',
+    'codex',
+    '--agent',
+    'cursor',
+  ]);
+  assert.deepEqual(globalCommand.args, [
+    'skills',
+    'add',
+    'obra/superpowers',
+    '-y',
+    '-g',
+    '--agent',
+    'github-copilot',
+  ]);
+});
+
+test('initWorkspace installs missing OpenSpec CLI before initializing workspace', async () => {
+  const projectPath = await tmpProject();
+  const commands = [];
+  let openspecAvailable = false;
+
+  const result = await initWorkspace(
+    projectPath,
+    {
+      scope: 'global',
+      language: 'en',
+      platforms: ['claude-code'],
+      yes: true,
+    },
+    {
+      homeDir: '/tmp/onespec-home',
+      commandExists: (command) => {
+        if (command !== 'openspec') {
+          return true;
+        }
+        return openspecAvailable;
+      },
+      runCommand: (command, args, cwd) => {
+        commands.push({ command, args, cwd });
+        if (command === 'npm' || command === 'npm.cmd') {
+          openspecAvailable = true;
+        }
+      },
+      initProject: async (_projectPath, options) => ({
+        platform: options.platform,
+        platformName: 'Claude Code',
+        skillPath: `/fake/${options.platform}`,
+        installedSkill: true,
+        installedSkills: BUNDLED_SKILLS,
+        skippedSkills: [],
+      }),
+    },
+  );
+
+  assert.equal(result.openspecCli.status, 'installed');
+  assert.deepEqual(commands[0], {
+    command: 'npm',
+    args: ['install', '-g', '@fission-ai/openspec@latest'],
+    cwd: projectPath,
+  });
+  assert.deepEqual(commands[1], {
+    command: 'openspec',
+    args: ['init', '/tmp/onespec-home', '--tools', 'claude-code'],
+    cwd: projectPath,
+  });
+  assert.deepEqual(commands[2], {
+    command: 'npx',
+    args: ['skills', 'add', 'obra/superpowers', '-y', '-g', '--agent', 'claude-code'],
+    cwd: projectPath,
+  });
+});

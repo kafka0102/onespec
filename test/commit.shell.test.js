@@ -137,3 +137,52 @@ test('onespec-commit includes dirty change artifacts under openspec change direc
   assert.ok(lines.includes('A  openspec/changes/add-login/proposal.md'));
   assert.ok(lines.includes('A  openspec/changes/add-login/review-bundle.zip'));
 });
+
+test('onespec-commit auto-commits related dirty files with a detected conventional message', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
+
+  await mkdir(path.join(projectPath, 'docs', 'standards'), { recursive: true });
+  await mkdir(path.join(projectPath, 'packages', 'web', 'src'), { recursive: true });
+  await writeFile(path.join(projectPath, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n');
+  await writeFile(
+    path.join(projectPath, 'docs', 'standards', 'git-workflow.md'),
+    [
+      '# Git 工作流规范',
+      '',
+      '提交标题格式必须为：',
+      '',
+      '<type>(<scope>): <简要描述>',
+      '',
+      '描述使用简体中文。',
+      '',
+    ].join('\n'),
+  );
+  await writeFile(path.join(projectPath, 'packages', 'web', 'src', 'index.ts'), 'export const value = 1;\n');
+  await writeFile(path.join(projectPath, 'README.md'), '# Demo\n');
+
+  await git(projectPath, ['init']);
+  await git(projectPath, ['config', 'user.name', 'Test User']);
+  await git(projectPath, ['config', 'user.email', 'test@example.com']);
+  await git(projectPath, ['add', '.']);
+  await git(projectPath, ['commit', '-m', 'init']);
+  await initChangeState(projectPath, 'add-login');
+
+  await execFileAsync('bash', [scriptPath, 'track', 'add-login', 'packages/web/src/index.ts'], {
+    cwd: projectPath,
+  });
+  await writeFile(path.join(projectPath, 'packages', 'web', 'src', 'index.ts'), 'export const value = 2;\n');
+  await writeFile(path.join(projectPath, 'notes.txt'), 'unrelated\n');
+
+  const { stdout } = await execFileAsync('bash', [scriptPath, 'commit-related', 'add-login', 'closeout'], {
+    cwd: projectPath,
+  });
+  const { stdout: subject } = await git(projectPath, ['log', '-1', '--pretty=%s']);
+  const { stdout: status } = await git(projectPath, ['status', '--porcelain=v1']);
+
+  assert.match(stdout, /commit_created: true/);
+  assert.match(stdout, /commit_context: closeout/);
+  assert.match(stdout, /commit_message: chore\(web\): 提交 add-login 收尾前改动/);
+  assert.equal(subject.trim(), 'chore(web): 提交 add-login 收尾前改动');
+  assert.equal(status.trim(), '?? notes.txt');
+});

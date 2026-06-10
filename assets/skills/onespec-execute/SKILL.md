@@ -196,13 +196,15 @@ apply 前至少读取：
 📍 当前工作区: `<path>`
 📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
 
-1. 进入 `onespec-archive`，选择删除 worktree / 归档相关操作
+1. 删除 worktree 并归档
 2. 保持当前分支 / worktree 不变，先停在这里，稍后再继续
 其他：任意非编号内容视为继续修改当前实现；如果意图不在以上选项里，也可以直接补充说明
 ---
 ```
 
 如果当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree；若你直接回复非编号内容，我会按继续修改处理。"
+
+这里的 `1` 本身就是对“删除 worktree 并归档”的明确授权。用户回复 `1` 后，后续进入 `onespec-archive` 时不得再次展示一轮收尾菜单，只能继续做状态检查并执行对应 closeout。
 
 不要只停在“下一步应进入 `onespec-archive`”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户可直接回复的编号选项。
 
@@ -213,7 +215,7 @@ apply 前至少读取：
 - 实现完成后直接输出"已完成"总结，而未执行 5.1 的脚本
 - 汇报中缺少当前分支/工作区信息（checklist 第 1-3 项）
 - 未给出明确的下一步编号选项
-- 将 archive / merge / worktree 删除操作混入实现完成汇报
+- 在用户尚未选择前，直接执行 archive / merge / worktree 删除操作
 - 在用户未回复前自行进入 `onespec-archive` 阶段
 - 用"下一步应进入 onespec-archive"这种抽象描述替代具体编号菜单
 - 在用户完成 review 并明确要求收尾前，擅自删除临时 worktree

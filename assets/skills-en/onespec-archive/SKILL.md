@@ -49,7 +49,9 @@ Let the user review the implementation. If they raise issues, continue editing a
 
 After implementation is done, do not require another explicit review-confirmation step and do not show a generic "continue review / preserve branch" menu. Only ask whether archive-related cleanup should happen. If the user replies with any non-numbered content, treat that as a request to keep modifying the implementation and return directly to code work.
 
-Do not make the user guess what to type next. When entering `onespec-archive`, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `1,3`.
+Do not make the user guess what to type next. If the user enters `onespec-archive` without having made a closeout choice yet, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `1,3`.
+
+If the user arrived from the `onespec-execute` completion report and already replied with a closeout number there, treat that earlier reply as the only required authorization and do not show the delete-worktree / archive menu again. At that point, only report the required state checks and execute the chosen closeout action.
 
 Before offering closeout choices, explicitly tell the user:
 
@@ -121,6 +123,8 @@ Menu handling rules:
 - reply with multiple digits, such as `1,3`: validate the combination and execute it in a safe order if valid; otherwise explain the conflict explicitly
 - free-form text instead of digits: treat it as a request to continue modifying the implementation; only ask a minimal clarification question if the intent is genuinely unclear
 
+If the user already selected `1`, `2`, or `3` in the `onespec-execute` completion menu, do not repeat the menu here and proceed directly with the chosen action.
+
 ## 3. Archive Rules
 
 Before archive or worktree deletion is finalized, always check whether there is still uncommitted code related to the current change:
@@ -131,11 +135,10 @@ Before archive or worktree deletion is finalized, always check whether there is 
 
 - if the result is empty, continue with closeout
 - if the result is empty, unrelated untracked directories must not block closeout; for example, `.superpowers/` that is not recorded in the tracked-file list inside `.onespec.yaml` can be called out as "not included in this change" and then ignored for closeout purposes
-- if the result is not empty, explicitly tell the user which change-related files are still uncommitted and pause archive
-- if the user wants to commit now, stage only the files related to this change:
+- if the result is not empty, do not stop at "please commit first". The closeout scripts must auto-commit those files, and they must only commit files related to this change:
 
 ```bash
-"$ONESPEC_BASH" "$ONESPEC_COMMIT" stage-related <change-id>
+"$ONESPEC_BASH" "$ONESPEC_COMMIT" commit-related <change-id> <closeout|archive|preserve-state>
 ```
 
 - prefer the repository's own Git commit policy for commit-message format, scope, and language; detect project docs and config first:
@@ -148,6 +151,11 @@ Before archive or worktree deletion is finalized, always check whether there is 
 - if the project does not define a policy, fall back to general Conventional Commits: `<type>(<scope>): <short summary>`
 - only commit the intersection of the tracked-file list stored in `.onespec.yaml` and current dirty files; if `.onespec.yaml` itself is dirty, include it too; never include unrelated changes
 - exception: temporary zip files, export bundles, or other change-local artifacts under `openspec/changes/<change-id>/` are also part of the current change; auto-commit should include them so archive preserves them in change history
+- auto-commit only covers the local commits needed for closeout; it is not authorization to merge, rebase, or push. Those actions still require separate explicit user approval.
+- recommended order:
+  1. auto-commit current-workspace dirty files related to the change before closeout continues
+  2. if archive creates new archive artifacts or removes `.onespec.yaml`, auto-commit the archive result after archive finishes
+  3. if the user only deletes a temporary worktree, auto-commit the preserved runtime state after copying it back into the origin workspace
 - If code is merged into the target branch and the user chooses archive, run OpenSpec archive immediately and set state to `archived`.
 - If the user deletes the worktree but does not archive yet, set state to `done` and explain that archive can be run later. Do not delete `.onespec.yaml` in that case.
 - Only after archive actually runs should the runtime state file be removed:

@@ -1,22 +1,24 @@
-import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 
 import { doctorProject } from './doctor.js';
-import { initProject, SUPPORTED_LANGUAGES } from './init.js';
+import { SUPPORTED_LANGUAGES } from './init.js';
 import { getPlatform } from './platforms.js';
-
-const OPEN_SPEC_CLI_PACKAGE = '@fission-ai/openspec@latest';
-const SUPERPOWERS_PACKAGE = 'obra/superpowers';
-const SUPPORTED_PLATFORM_IDS = ['codex', 'claude-code', 'cursor', 'gemini-cli', 'github-copilot'];
+import {
+  detectExistingOneSpecPlatforms,
+  detectPlatforms,
+  initWorkspace,
+  parsePlatformList,
+  SUPPORTED_PLATFORM_IDS,
+} from './setup.js';
 
 function parseArgs(argv) {
   const args = [...argv];
   const command = args.shift() ?? 'help';
   const options = {
     targetPath: process.cwd(),
-    platform: 'codex',
+    platforms: [],
     scope: undefined,
     language: undefined,
     yes: false,
@@ -45,7 +47,7 @@ function parseArgs(argv) {
         options.language = args.shift();
         break;
       case '--platform':
-        options.platform = args.shift() ?? 'codex';
+        options.platforms.push(args.shift() ?? '');
         break;
       default:
         if (arg?.startsWith('-')) {
@@ -59,34 +61,43 @@ function parseArgs(argv) {
   return { command, options };
 }
 
-function commandExists(command) {
-  try {
-    const checker = process.platform === 'win32' ? 'where' : 'which';
-    execFileSync(checker, [command], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
+function normalizeYesNo(value) {
+  return ['y', 'yes', '是', '覆盖'].includes(value.trim().toLowerCase());
 }
 
 async function askInitOptions(options) {
+  const explicitPlatforms = parsePlatformList(options.platforms);
+  const detectedPlatforms = await detectPlatforms(options.targetPath);
+  const defaultPlatforms = explicitPlatforms.length > 0 ? explicitPlatforms : detectedPlatforms.length > 0 ? detectedPlatforms : ['codex'];
+
   if (options.yes) {
     return {
       ...options,
       scope: options.scope ?? 'project',
       language: options.language ?? 'zh',
-      installOpenSpecCli: false,
-      initOpenSpecProject: false,
-      installSuperpowers: false,
+      platforms: defaultPlatforms,
     };
   }
 
-  const preflight = await doctorProject(options.targetPath, {
-    platform: options.platform,
-    scope: options.scope ?? 'project',
-  });
   const rl = readline.createInterface({ input, output });
   try {
+    if (explicitPlatforms.length === 0) {
+      console.log('可选 AI 平台：');
+      for (const [index, platformId] of SUPPORTED_PLATFORM_IDS.entries()) {
+        const platform = getPlatform(platformId);
+        const detectedSuffix = detectedPlatforms.includes(platformId) ? ' [detected]' : '';
+        console.log(`  ${index + 1}. ${platform.name} (${platform.id})${detectedSuffix}`);
+      }
+      console.log('');
+    }
+
+    const platformAnswer =
+      explicitPlatforms.length > 0
+        ? explicitPlatforms.join(',')
+        : await rl.question(
+            `安装到哪些 AI 平台？输入编号或 id，逗号分隔（默认 ${defaultPlatforms.join(',')}）：`,
+          );
+    const selectedPlatforms = resolvePlatformSelection(platformAnswer, defaultPlatforms);
     const scopeAnswer =
       options.scope ??
       (await rl.question('安装范围？输入 project 或 global（默认 project）：'));
@@ -94,97 +105,85 @@ async function askInitOptions(options) {
     const languageAnswer =
       options.language ??
       (await rl.question('Skill 语言？输入 zh 或 en（默认 zh）：'));
-    const overwriteAnswer = options.overwrite
-      ? 'yes'
-      : await rl.question('如果 OneSpec skill 已存在，是否覆盖？输入 yes 或 no（默认 no）：');
-    const installOpenSpecCliAnswer =
-      preflight.openspecCli.available
+    const existingPlatforms = await detectExistingOneSpecPlatforms(
+      options.targetPath,
+      resolvedScope,
+      selectedPlatforms,
+    );
+    const overwriteAnswer =
+      options.overwrite || existingPlatforms.length === 0
         ? 'no'
         : await rl.question(
-            `未检测到 OpenSpec CLI。是否现在执行 npm install -g ${OPEN_SPEC_CLI_PACKAGE} ？输入 yes 或 no（默认 no）：`,
+            `检测到这些平台已存在 OneSpec skill：${existingPlatforms.join(', ')}。是否覆盖已存在项？输入 yes 或 no（默认 no）：`,
           );
-    const initOpenSpecProjectAnswer =
-      resolvedScope === 'project' && !preflight.hasOpenSpecProject
-        ? await rl.question(
-            '当前项目未初始化 OpenSpec。是否在安装 OneSpec 后执行 openspec init？输入 yes 或 no（默认 no）：',
-          )
-        : 'no';
-    const installSuperpowersAnswer = preflight.superpowers.available
-      ? 'no'
-      : await rl.question(
-          `未检测到 Superpowers。是否现在执行 npx skills add ${SUPERPOWERS_PACKAGE} -a ${getPlatform(options.platform).id}${resolvedScope === 'global' ? ' -g' : ''} -y ？输入 yes 或 no（默认 no）：`,
-        );
 
     return {
       ...options,
+      platforms: selectedPlatforms,
       scope: resolvedScope,
       language: languageAnswer.trim() || 'zh',
-      overwrite: options.overwrite || ['y', 'yes', '是', '覆盖'].includes(overwriteAnswer.trim()),
-      installOpenSpecCli: ['y', 'yes', '是'].includes(installOpenSpecCliAnswer.trim()),
-      initOpenSpecProject: ['y', 'yes', '是'].includes(initOpenSpecProjectAnswer.trim()),
-      installSuperpowers: ['y', 'yes', '是'].includes(installSuperpowersAnswer.trim()),
+      overwrite: options.overwrite || normalizeYesNo(overwriteAnswer),
     };
   } finally {
     rl.close();
   }
 }
 
-function runCommand(command, args, cwd = process.cwd()) {
-  execFileSync(command, args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
-}
-
-function getNpxExecutable() {
-  return process.platform === 'win32' ? 'npx.cmd' : 'npx';
-}
-
-async function ensureRequestedDependencies(targetPath, options, preflight) {
-  if (options.installOpenSpecCli && !preflight.openspecCli.available) {
-    runCommand('npm', ['install', '-g', OPEN_SPEC_CLI_PACKAGE]);
+function resolvePlatformSelection(answer, defaultPlatforms) {
+  const trimmed = answer.trim();
+  if (!trimmed) {
+    return defaultPlatforms;
   }
 
-  if (options.installSuperpowers && !preflight.superpowers.available) {
-    const args = ['skills', 'add', SUPERPOWERS_PACKAGE, '-a', getPlatform(options.platform).id, '-y'];
-    if (options.scope === 'global') {
-      args.push('-g');
-    }
-    runCommand(getNpxExecutable(), args, targetPath);
-  }
+  const numbered = trimmed
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => {
+      if (!/^\d+$/.test(value)) {
+        return value;
+      }
 
-  if (options.initOpenSpecProject && !preflight.hasOpenSpecProject) {
-    runCommand('openspec', ['init', targetPath], targetPath);
-  }
+      const index = Number.parseInt(value, 10) - 1;
+      if (index < 0 || index >= SUPPORTED_PLATFORM_IDS.length) {
+        throw new Error(`Unsupported platform selection: ${value}`);
+      }
+      return SUPPORTED_PLATFORM_IDS[index];
+    });
+
+  return parsePlatformList(numbered);
 }
 
 function printHelp() {
   console.log(`OneSpec Skill Installer
 
 用法：
-  onespec init [path] [--yes] [--overwrite] [--scope project|global] [--language zh|en] [--platform ${SUPPORTED_PLATFORM_IDS.join('|')}]
+  onespec init [path] [--yes] [--overwrite] [--scope project|global] [--language zh|en] [--platform ${SUPPORTED_PLATFORM_IDS.join('|')}[,...]]
   onespec doctor [path] [--scope project|global] [--platform ${SUPPORTED_PLATFORM_IDS.join('|')}]
 
 说明：
   当前提供中英文 Skill bundle，官方支持 ${SUPPORTED_PLATFORM_IDS.join(' / ')}。
+  init 会引导选择 agent，并自动安装 OpenSpec / Superpowers / OneSpec。
 `);
 }
 
 function printSummary(result) {
   console.log('\nOneSpec 初始化完成\n');
-  console.log(`目标平台：${result.platformName} (${result.platform})`);
-  console.log(`安装位置：${result.skillPath}`);
+  console.log(`目标平台：${result.platformNames.join(', ')}`);
   console.log(`安装范围：${result.scope}`);
   console.log(`Skill 语言：${result.languageName} (${result.language})`);
-  console.log(`Skill 状态：${result.installedSkill ? '已安装/已覆盖' : '已存在，已跳过'}`);
-  console.log(`已安装 Skills：${result.installedSkills.join(', ') || '无'}`);
-  console.log(`已跳过 Skills：${result.skippedSkills.join(', ') || '无'}`);
-  console.log(`工作目录：${path.join(result.projectPath, 'docs', 'superpowers')}`);
-  console.log('\n环境检查：');
-  console.log(`OpenSpec CLI：${commandExists('openspec') ? '已找到' : '未找到，请先安装或运行 openspec init'}`);
-  console.log(`Superpowers：请确认 ${result.platformName} 可发现 brainstorming / writing-plans / using-git-worktrees 等 skills`);
-  console.log(`\n开始使用：重启 ${result.platformName} 会话后，直接输入 “使用 onespec：<你的任务描述>”。\n`);
+  console.log(`OpenSpec CLI：${result.openspecCli.status === 'installed' ? '已自动安装' : '已存在'}`);
+  console.log(`OpenSpec Tools：${result.openspec.toolIds.join(', ')}`);
+  console.log(`Superpowers Agents：${result.superpowers.agents.join(', ')}`);
+  for (const platformResult of result.results) {
+    const platformLabel = `${platformResult.platformName} (${platformResult.platform})`;
+    const skillStatus = platformResult.installedSkill ? '已安装/已覆盖' : '已存在，已跳过';
+    console.log(`- ${platformLabel}：${skillStatus} -> ${platformResult.skillPath}`);
+  }
+  if (result.scope === 'project') {
+    console.log(`工作目录：${path.join(result.projectPath, 'docs', 'superpowers')}`);
+  }
+  console.log('\n开始使用：重启对应 agent 会话后，直接输入 “使用 onespec：<你的任务描述>”。\n');
 }
 
 function printDoctor(report) {
@@ -218,8 +217,9 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   if (command === 'doctor') {
+    const doctorPlatforms = parsePlatformList(options.platforms);
     const report = await doctorProject(options.targetPath, {
-      platform: options.platform,
+      platform: doctorPlatforms[0],
       scope: options.scope ?? 'project',
     });
     if (options.json) {
@@ -234,12 +234,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (!SUPPORTED_LANGUAGES[initOptions.language]) {
     throw new Error(`Unsupported language: ${initOptions.language}`);
   }
-  const preflight = await doctorProject(initOptions.targetPath, {
-    platform: initOptions.platform,
-    scope: initOptions.scope ?? 'project',
-  });
-  await ensureRequestedDependencies(initOptions.targetPath, initOptions, preflight);
-  const result = await initProject(initOptions.targetPath, initOptions);
+  const result = await initWorkspace(initOptions.targetPath, initOptions);
   if (initOptions.json) {
     console.log(JSON.stringify(result, null, 2));
   } else {
