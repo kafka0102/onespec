@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { promisify } from 'node:util';
 
 import { initProject } from '../src/init.js';
+import { getProjectSkillDir } from '../src/platforms.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -15,6 +16,10 @@ async function tmpProject() {
 }
 
 const BUNDLED_SKILLS = ['onespec', 'onespec-design', 'onespec-execute', 'onespec-archive'];
+
+function projectSkillPath(projectPath, platform, ...parts) {
+  return path.join(getProjectSkillDir(projectPath, platform), ...parts);
+}
 
 test('initProject installs bundled OneSpec skills and creates working directories', async () => {
   const projectPath = await tmpProject();
@@ -32,38 +37,28 @@ test('initProject installs bundled OneSpec skills and creates working directorie
   assert.deepEqual(result.installedSkills, BUNDLED_SKILLS);
 
   for (const skillName of BUNDLED_SKILLS) {
-    const skillPath = path.join(projectPath, '.codex', 'skills', skillName, 'SKILL.md');
+    const skillPath = projectSkillPath(projectPath, 'codex', skillName, 'SKILL.md');
     assert.match(await readFile(skillPath, 'utf8'), new RegExp(`name: ${skillName}`));
   }
 
-  const stateScriptPath = path.join(
+  const stateScriptPath = projectSkillPath(projectPath, 'codex', 'onespec', 'scripts', 'onespec-state.sh');
+  const handoffScriptPath = projectSkillPath(
     projectPath,
-    '.codex',
-    'skills',
-    'onespec',
-    'scripts',
-    'onespec-state.sh',
-  );
-  const handoffScriptPath = path.join(
-    projectPath,
-    '.codex',
-    'skills',
+    'codex',
     'onespec',
     'scripts',
     'onespec-handoff.sh',
   );
-  const commitScriptPath = path.join(
+  const commitScriptPath = projectSkillPath(
     projectPath,
-    '.codex',
-    'skills',
+    'codex',
     'onespec',
     'scripts',
     'onespec-commit.sh',
   );
-  const closeoutScriptPath = path.join(
+  const closeoutScriptPath = projectSkillPath(
     projectPath,
-    '.codex',
-    'skills',
+    'codex',
     'onespec',
     'scripts',
     'onespec-closeout.sh',
@@ -87,10 +82,7 @@ test('CLI init installs Chinese OneSpec skill with json output', async () => {
     { cwd: path.resolve('.') },
   );
   const result = JSON.parse(stdout);
-  const skill = await readFile(
-    path.join(projectPath, '.codex', 'skills', 'onespec', 'SKILL.md'),
-    'utf8',
-  );
+  const skill = await readFile(projectSkillPath(projectPath, 'codex', 'onespec', 'SKILL.md'), 'utf8');
 
   assert.equal(result.platform, 'codex');
   assert.equal(result.scope, 'project');
@@ -112,7 +104,7 @@ test('initProject can install English skill overlays', async () => {
   });
 
   const routerSkill = await readFile(
-    path.join(projectPath, '.codex', 'skills', 'onespec', 'SKILL.md'),
+    projectSkillPath(projectPath, 'codex', 'onespec', 'SKILL.md'),
     'utf8',
   );
 
@@ -124,7 +116,7 @@ test('initProject can install English skill overlays', async () => {
 
 test('initProject installs missing bundled skills even when router already exists', async () => {
   const projectPath = await tmpProject();
-  const routerDir = path.join(projectPath, '.codex', 'skills', 'onespec');
+  const routerDir = projectSkillPath(projectPath, 'codex', 'onespec');
   await mkdir(routerDir, { recursive: true });
 
   const result = await initProject(projectPath, {
@@ -138,7 +130,7 @@ test('initProject installs missing bundled skills even when router already exist
   assert.deepEqual(result.skippedSkills, ['onespec']);
 
   for (const skillName of ['onespec-design', 'onespec-execute', 'onespec-archive']) {
-    await stat(path.join(projectPath, '.codex', 'skills', skillName, 'SKILL.md'));
+    await stat(projectSkillPath(projectPath, 'codex', skillName, 'SKILL.md'));
   }
 });
 
@@ -171,3 +163,61 @@ test('initProject skips existing skill unless overwrite is requested', async () 
   assert.equal(third.skippedExisting, false);
   assert.deepEqual(third.installedSkills, BUNDLED_SKILLS);
 });
+
+test('initProject supports Claude Code project installs', async () => {
+  const projectPath = await tmpProject();
+
+  const result = await initProject(projectPath, {
+    platform: 'claude-code',
+    scope: 'project',
+    yes: true,
+    language: 'en',
+  });
+
+  assert.equal(result.platform, 'claude-code');
+  assert.equal(result.platformName, 'Claude Code');
+
+  for (const skillName of BUNDLED_SKILLS) {
+    const skillPath = projectSkillPath(projectPath, 'claude-code', skillName, 'SKILL.md');
+    assert.match(await readFile(skillPath, 'utf8'), new RegExp(`name: ${skillName}`));
+  }
+
+  const routerSkill = await readFile(
+    projectSkillPath(projectPath, 'claude-code', 'onespec', 'SKILL.md'),
+    'utf8',
+  );
+  assert.match(routerSkill, /# OneSpec Workflow/);
+  assert.match(routerSkill, /\$HOME"\/\.claude/);
+});
+
+for (const platform of [
+  { id: 'cursor', name: 'Cursor' },
+  { id: 'gemini-cli', name: 'Gemini CLI' },
+  { id: 'github-copilot', name: 'GitHub Copilot' },
+]) {
+  test(`initProject supports ${platform.name} project installs`, async () => {
+    const projectPath = await tmpProject();
+
+    const result = await initProject(projectPath, {
+      platform: platform.id,
+      scope: 'project',
+      yes: true,
+      language: 'en',
+    });
+
+    assert.equal(result.platform, platform.id);
+    assert.equal(result.platformName, platform.name);
+
+    for (const skillName of BUNDLED_SKILLS) {
+      const skillPath = projectSkillPath(projectPath, platform.id, skillName, 'SKILL.md');
+      assert.match(await readFile(skillPath, 'utf8'), new RegExp(`name: ${skillName}`));
+    }
+
+    const routerSkill = await readFile(
+      projectSkillPath(projectPath, platform.id, 'onespec', 'SKILL.md'),
+      'utf8',
+    );
+    assert.match(routerSkill, /# OneSpec Workflow/);
+    assert.match(routerSkill, /\$HOME"\/\.cursor|\$HOME"\/\.gemini|\$HOME"\/\.copilot/);
+  });
+}

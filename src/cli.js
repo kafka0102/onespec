@@ -5,9 +5,11 @@ import { stdin as input, stdout as output } from 'node:process';
 
 import { doctorProject } from './doctor.js';
 import { initProject, SUPPORTED_LANGUAGES } from './init.js';
+import { getPlatform } from './platforms.js';
 
 const OPEN_SPEC_CLI_PACKAGE = '@fission-ai/openspec@latest';
 const SUPERPOWERS_PACKAGE = 'obra/superpowers';
+const SUPPORTED_PLATFORM_IDS = ['codex', 'claude-code', 'cursor', 'gemini-cli', 'github-copilot'];
 
 function parseArgs(argv) {
   const args = [...argv];
@@ -110,7 +112,7 @@ async function askInitOptions(options) {
     const installSuperpowersAnswer = preflight.superpowers.available
       ? 'no'
       : await rl.question(
-          `未检测到 Superpowers。是否现在执行 npx skills add ${SUPERPOWERS_PACKAGE} -a codex${resolvedScope === 'global' ? ' -g' : ''} -y ？输入 yes 或 no（默认 no）：`,
+          `未检测到 Superpowers。是否现在执行 npx skills add ${SUPERPOWERS_PACKAGE} -a ${getPlatform(options.platform).id}${resolvedScope === 'global' ? ' -g' : ''} -y ？输入 yes 或 no（默认 no）：`,
         );
 
     return {
@@ -145,7 +147,7 @@ async function ensureRequestedDependencies(targetPath, options, preflight) {
   }
 
   if (options.installSuperpowers && !preflight.superpowers.available) {
-    const args = ['skills', 'add', SUPERPOWERS_PACKAGE, '-a', 'codex', '-y'];
+    const args = ['skills', 'add', SUPERPOWERS_PACKAGE, '-a', getPlatform(options.platform).id, '-y'];
     if (options.scope === 'global') {
       args.push('-g');
     }
@@ -161,16 +163,17 @@ function printHelp() {
   console.log(`OneSpec Skill Installer
 
 用法：
-  onespec init [path] [--yes] [--overwrite] [--scope project|global] [--language zh|en]
-  onespec doctor [path] [--scope project|global]
+  onespec init [path] [--yes] [--overwrite] [--scope project|global] [--language zh|en] [--platform ${SUPPORTED_PLATFORM_IDS.join('|')}]
+  onespec doctor [path] [--scope project|global] [--platform ${SUPPORTED_PLATFORM_IDS.join('|')}]
 
 说明：
-  当前提供中英文 Skill bundle，暂仅支持 Codex 平台。
+  当前提供中英文 Skill bundle，官方支持 ${SUPPORTED_PLATFORM_IDS.join(' / ')}。
 `);
 }
 
 function printSummary(result) {
   console.log('\nOneSpec 初始化完成\n');
+  console.log(`目标平台：${result.platformName} (${result.platform})`);
   console.log(`安装位置：${result.skillPath}`);
   console.log(`安装范围：${result.scope}`);
   console.log(`Skill 语言：${result.languageName} (${result.language})`);
@@ -180,12 +183,13 @@ function printSummary(result) {
   console.log(`工作目录：${path.join(result.projectPath, 'docs', 'superpowers')}`);
   console.log('\n环境检查：');
   console.log(`OpenSpec CLI：${commandExists('openspec') ? '已找到' : '未找到，请先安装或运行 openspec init'}`);
-  console.log('Superpowers：请确认 Codex 可发现 brainstorming / writing-plans / using-git-worktrees 等 skills');
-  console.log('\n开始使用：在 Codex 中输入 “使用 onespec：<你的任务描述>”。\n');
+  console.log(`Superpowers：请确认 ${result.platformName} 可发现 brainstorming / writing-plans / using-git-worktrees 等 skills`);
+  console.log(`\n开始使用：重启 ${result.platformName} 会话后，直接输入 “使用 onespec：<你的任务描述>”。\n`);
 }
 
 function printDoctor(report) {
   console.log('\nOneSpec 环境检查\n');
+  console.log(`目标平台：${report.platformName} (${report.platform})`);
   console.log(`OneSpec Skill：${report.onespec.installed ? '已安装' : '未安装'}`);
   console.log(`OneSpec 子 Skills：${report.onespec.installedSkills.join(', ') || '无'}`);
   console.log(`缺少 OneSpec 子 Skills：${report.onespec.missingSkills.join(', ') || '无'}`);

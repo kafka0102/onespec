@@ -2,7 +2,7 @@ import { access, chmod, cp, mkdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { getSkillDir, PLATFORMS } from './platforms.js';
+import { getPlatform, getSkillDir } from './platforms.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,14 +66,11 @@ async function createWorkingDirs(projectPath) {
 
 export async function initProject(projectPath, options = {}) {
   const resolvedProject = path.resolve(projectPath);
-  const platform = options.platform ?? 'codex';
+  const platform = getPlatform(options.platform ?? 'codex');
   const scope = options.scope ?? 'project';
   const overwrite = Boolean(options.overwrite);
   const language = options.language ?? 'zh';
 
-  if (!PLATFORMS[platform]) {
-    throw new Error(`Unsupported platform "${platform}". Currently only "codex" is supported.`);
-  }
   if (!['project', 'global'].includes(scope)) {
     throw new Error(`Unsupported scope "${scope}". Use "project" or "global".`);
   }
@@ -85,7 +82,7 @@ export async function initProject(projectPath, options = {}) {
 
   const sourceRoot = assetsSkillsDir();
   const localizedRoot = localizedSkillsDir(language);
-  const skillsDir = getSkillDir(resolvedProject, scope, platform);
+  const skillsDir = getSkillDir(resolvedProject, scope, platform.id);
   const destination = path.join(skillsDir, 'onespec');
   const installedSkills = [];
   const skippedSkills = [];
@@ -122,8 +119,8 @@ export async function initProject(projectPath, options = {}) {
 
   return {
     projectPath: resolvedProject,
-    platform,
-    platformName: PLATFORMS[platform].name,
+    platform: platform.id,
+    platformName: platform.name,
     scope,
     language,
     languageName: SUPPORTED_LANGUAGES[language].name,

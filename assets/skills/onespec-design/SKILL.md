@@ -16,7 +16,7 @@ description: 当用户需要为 OpenSpec change 做需求澄清、proposal、des
 先恢复状态：
 
 ```bash
-ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.config -path '*/onespec/scripts/onespec-env.sh' -type f -print -quit 2>/dev/null)}"
+ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cursor "$HOME"/.gemini "$HOME"/.copilot "$HOME"/.agents "$HOME"/.config -path '*/onespec/scripts/onespec-env.sh' -type f -print -quit 2>/dev/null)}"
 . "$ONESPEC_ENV"
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```

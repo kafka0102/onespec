@@ -16,7 +16,7 @@ OneSpec 是组合路由 Skill。它只负责恢复状态、判断阶段并切换
 每次进入先检查状态，不依赖聊天历史：
 
 ```bash
-ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.agents "$HOME"/.config -path '*/onespec/scripts/onespec-env.sh' -type f -print -quit 2>/dev/null)}"
+ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cursor "$HOME"/.gemini "$HOME"/.copilot "$HOME"/.agents "$HOME"/.config -path '*/onespec/scripts/onespec-env.sh' -type f -print -quit 2>/dev/null)}"
 . "$ONESPEC_ENV"
 "$ONESPEC_BASH" "$ONESPEC_STATE" list
 ```

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { BUNDLED_ONESPEC_SKILLS } from './init.js';
-import { getSkillDir, PLATFORMS } from './platforms.js';
+import { getDiscoveryRoots, getPlatform, getSkillDir } from './platforms.js';
 
 const REQUIRED_SUPERPOWERS = [
   'brainstorming',
@@ -41,8 +41,12 @@ function defaultCommandChecker(command) {
 function defaultSkillRoots(projectPath, scope, platform) {
   return [
     getSkillDir(projectPath, scope, platform),
-    path.join(os.homedir(), '.codex', 'skills'),
+    ...getDiscoveryRoots(projectPath, platform),
+    path.join(os.homedir(), '.claude', 'skills'),
     path.join(os.homedir(), '.codex', 'superpowers', 'skills'),
+    path.join(os.homedir(), '.cursor', 'skills'),
+    path.join(os.homedir(), '.gemini', 'skills'),
+    path.join(os.homedir(), '.copilot', 'skills'),
     path.join(os.homedir(), '.agents', 'skills'),
   ];
 }
@@ -101,20 +105,16 @@ async function isChineseOneSpec(projectPath, scope, platform) {
 
 export async function doctorProject(projectPath, options = {}) {
   const resolvedProject = path.resolve(projectPath);
-  const platform = options.platform ?? 'codex';
+  const platform = getPlatform(options.platform ?? 'codex');
   const scope = options.scope ?? 'project';
   const commandChecker = options.commandChecker ?? defaultCommandChecker;
 
-  if (!PLATFORMS[platform]) {
-    throw new Error(`Unsupported platform "${platform}". Currently only "codex" is supported.`);
-  }
-
-  const onespec = await isChineseOneSpec(resolvedProject, scope, platform);
+  const onespec = await isChineseOneSpec(resolvedProject, scope, platform.id);
   const skillRoots =
     options.skillRoots ??
     [
       ...new Set([
-        ...defaultSkillRoots(resolvedProject, scope, platform),
+        ...defaultSkillRoots(resolvedProject, scope, platform.id),
         ...(options.extraSkillRoots ?? []),
       ]),
     ];
@@ -139,12 +139,14 @@ export async function doctorProject(projectPath, options = {}) {
   const nextSteps = [];
   if (onespec.missingSkills.length > 0) {
     nextSteps.push(
-      `缺少 OneSpec Skills：${onespec.missingSkills.join(', ')}。运行 \`onespec init --overwrite\` 补齐 OneSpec Skill bundle。`,
+      `缺少 OneSpec Skills：${onespec.missingSkills.join(', ')}。运行 \`onespec init --platform ${platform.id} --overwrite\` 补齐 OneSpec Skill bundle。`,
     );
   } else if (!onespec.installed) {
-    nextSteps.push('运行 `onespec init --yes` 安装 OneSpec Skill。');
+    nextSteps.push(`运行 \`onespec init --platform ${platform.id} --yes\` 安装 OneSpec Skill。`);
   } else if (!onespec.chinese && !onespec.english) {
-    nextSteps.push('当前 OneSpec Skill 无法识别语言版本，运行 `onespec init --overwrite` 覆盖安装。');
+    nextSteps.push(
+      `当前 OneSpec Skill 无法识别语言版本，运行 \`onespec init --platform ${platform.id} --overwrite\` 覆盖安装。`,
+    );
   }
   if (!openspecCli.available) {
     nextSteps.push('未找到 OpenSpec CLI，请安装 OpenSpec CLI 并在目标项目运行 `openspec init`。');
@@ -155,13 +157,13 @@ export async function doctorProject(projectPath, options = {}) {
     nextSteps.push(`缺少 Superpowers Skills：${missing.join(', ')}。请先安装 Superpowers。`);
   }
   if (nextSteps.length === 0) {
-    nextSteps.push('环境检查通过。可以在 Codex 中使用 `onespec` 工作流。');
+    nextSteps.push(`环境检查通过。可以在 ${platform.name} 中使用 \`onespec\` 工作流。`);
   }
 
   return {
     projectPath: resolvedProject,
-    platform,
-    platformName: PLATFORMS[platform].name,
+    platform: platform.id,
+    platformName: platform.name,
     scope,
     onespec,
     openspecCli,

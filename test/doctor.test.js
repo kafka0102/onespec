@@ -6,6 +6,7 @@ import { test } from 'node:test';
 
 import { doctorProject } from '../src/doctor.js';
 import { initProject } from '../src/init.js';
+import { getProjectSkillDir } from '../src/platforms.js';
 
 const BUNDLED_ONESPEC = ['onespec', 'onespec-design', 'onespec-execute', 'onespec-archive'];
 
@@ -13,8 +14,12 @@ async function tmpProject() {
   return mkdtemp(path.join(os.tmpdir(), 'onespec-doctor-'));
 }
 
-async function addSkill(projectPath, name) {
-  const skillDir = path.join(projectPath, '.codex', 'skills', name);
+function projectSkillPath(projectPath, platform, ...parts) {
+  return path.join(getProjectSkillDir(projectPath, platform), ...parts);
+}
+
+async function addSkill(projectPath, platform, name) {
+  const skillDir = projectSkillPath(projectPath, platform, name);
   await mkdir(skillDir, { recursive: true });
   await writeFile(
     path.join(skillDir, 'SKILL.md'),
@@ -53,13 +58,13 @@ test('doctorProject passes when OneSpec and required Superpowers skills are inst
     'executing-plans',
     'test-driven-development',
   ]) {
-    await addSkill(projectPath, skill);
+    await addSkill(projectPath, 'codex', skill);
   }
 
   const report = await doctorProject(projectPath, {
     platform: 'codex',
     scope: 'project',
-    skillRoots: [path.join(projectPath, '.codex', 'skills')],
+    skillRoots: [getProjectSkillDir(projectPath, 'codex')],
     commandChecker: (command) => command === 'openspec',
   });
 
@@ -76,7 +81,7 @@ test('doctorProject passes when OneSpec and required Superpowers skills are inst
 
 test('doctorProject reports missing bundled OneSpec child skills', async () => {
   const projectPath = await tmpProject();
-  await addSkill(projectPath, 'onespec');
+  await addSkill(projectPath, 'codex', 'onespec');
 
   const report = await doctorProject(projectPath, {
     platform: 'codex',
@@ -92,7 +97,7 @@ test('doctorProject reports missing bundled OneSpec child skills', async () => {
     'onespec-execute',
     'onespec-archive',
   ]);
-  assert.match(report.nextSteps.join('\n'), /onespec init --overwrite/);
+  assert.match(report.nextSteps.join('\n'), /onespec init --platform codex --overwrite/);
 });
 
 test('doctorProject detects English OneSpec bundle language', async () => {
@@ -147,3 +152,73 @@ test('doctorProject can detect Superpowers from an alternate global-style skills
   assert.equal(report.superpowers.available, true);
   assert.deepEqual(report.superpowers.missing, []);
 });
+
+test('doctorProject supports Claude Code installs', async () => {
+  const projectPath = await tmpProject();
+  await initProject(projectPath, {
+    platform: 'claude-code',
+    scope: 'project',
+    yes: true,
+  });
+
+  for (const skill of [
+    'brainstorming',
+    'writing-plans',
+    'using-git-worktrees',
+    'subagent-driven-development',
+    'executing-plans',
+    'test-driven-development',
+  ]) {
+    await addSkill(projectPath, 'claude-code', skill);
+  }
+
+  const report = await doctorProject(projectPath, {
+    platform: 'claude-code',
+    scope: 'project',
+    skillRoots: [getProjectSkillDir(projectPath, 'claude-code')],
+    commandChecker: () => false,
+  });
+
+  assert.equal(report.platform, 'claude-code');
+  assert.equal(report.platformName, 'Claude Code');
+  assert.equal(report.onespec.installed, true);
+  assert.equal(report.superpowers.available, true);
+});
+
+for (const platform of [
+  { id: 'cursor', name: 'Cursor' },
+  { id: 'gemini-cli', name: 'Gemini CLI' },
+  { id: 'github-copilot', name: 'GitHub Copilot' },
+]) {
+  test(`doctorProject supports ${platform.name} installs`, async () => {
+    const projectPath = await tmpProject();
+    await initProject(projectPath, {
+      platform: platform.id,
+      scope: 'project',
+      yes: true,
+    });
+
+    for (const skill of [
+      'brainstorming',
+      'writing-plans',
+      'using-git-worktrees',
+      'subagent-driven-development',
+      'executing-plans',
+      'test-driven-development',
+    ]) {
+      await addSkill(projectPath, platform.id, skill);
+    }
+
+    const report = await doctorProject(projectPath, {
+      platform: platform.id,
+      scope: 'project',
+      skillRoots: [getProjectSkillDir(projectPath, platform.id)],
+      commandChecker: () => false,
+    });
+
+    assert.equal(report.platform, platform.id);
+    assert.equal(report.platformName, platform.name);
+    assert.equal(report.onespec.installed, true);
+    assert.equal(report.superpowers.available, true);
+  });
+}
