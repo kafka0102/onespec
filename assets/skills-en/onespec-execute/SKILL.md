@@ -196,7 +196,7 @@ Current branch: <branch>
 Current workspace: <path>
 Origin: <origin_branch> @ <origin_workspace_path>
 
-1. Delete the worktree and archive
+1. Enter closeout (merge or discard the worktree using the base-branch rules; ask about archive after merge)
 2. Keep the current branch / worktree as-is and stop here for now
 Other: any non-numbered content means continue modifying the current implementation; if the intent is outside the menu, the user may also describe it directly
 ---
@@ -204,7 +204,7 @@ Other: any non-numbered content means continue modifying the current implementat
 
 If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
 
-That `1` is itself the explicit authorization for `delete worktree and archive`. After the user replies `1`, do not show a second closeout menu after handing off to `onespec-archive`; only continue with the required checks and execute the matching closeout action.
+That `1` is explicit authorization to enter `onespec-archive` closeout. After the user replies `1`, `onespec-archive` must apply the worktree/base-branch rules: if the base is not `main` / `master`, it may automatically merge and delete the worktree; if the base is `main` / `master`, it must ask whether to merge the code and delete the worktree or delete the worktree and discard the code. Ask about archive only after code is accepted and merged.
 
 Do not stop at an abstract note such as "the next step is `onespec-archive`" or just "do review-closeout". You must also give the user a concrete numbered menu.
 

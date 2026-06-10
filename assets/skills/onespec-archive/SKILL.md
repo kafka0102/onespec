@@ -5,7 +5,7 @@ description: 当用户需要对 OneSpec change 做最终评审、处理反馈、
 
 # OneSpec Archive
 
-用于 OneSpec 的评审、收尾与归档阶段。目标是在用户确认后执行删除 worktree 与 OpenSpec archive，不默认执行有后果的操作。
+用于 OneSpec 的评审、收尾与归档阶段。目标是在用户确认后合并或废弃临时 worktree，并在用户接受提交后再询问是否执行 OpenSpec archive。
 
 开始时说明：
 
@@ -47,11 +47,11 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 实现完成后让用户评审。若用户指出问题，继续修改并重新验证。
 
-开发完成后不需要再次让用户确认是否 review，也不需要展示常规“继续评审 / 保留分支”类选项。只需询问是否进行归档；如果用户回复任意非编号内容，默认视为“继续修改当前实现”，直接回到代码处理环节。
+开发完成后不需要再次让用户确认是否 review，也不需要展示常规“继续评审 / 保留分支”类选项。收尾应先处理临时 worktree 中的代码去向；如果用户接受并合并了提交，再询问是否进行归档。如果用户回复任意非编号内容，默认视为“继续修改当前实现”，直接回到代码处理环节。
 
 不要让用户自己猜“下一步该输入什么”。如果用户是直接进入 `onespec-archive`，尚未做收尾选择，则必须给出可直接回复的编号选项；如果支持多动作组合，允许用户回复逗号分隔的数字，例如 `1,3`。
 
-如果用户是从 `onespec-execute` 的完成汇报进入这里，并且已经回复了收尾编号，则把那次回复视为唯一有效授权，不得再次展示一轮“删除 worktree / 归档”菜单。此时只需汇报必要状态检查，并直接执行用户已选定的收尾动作。
+如果用户是从 `onespec-execute` 的完成汇报进入这里，并且已经回复了收尾编号，则把那次回复视为唯一有效授权，不得再次展示一轮相同菜单。此时只需汇报必要状态检查，并按本阶段的 worktree/base 分支规则执行用户已选定的收尾动作。
 
 进入收尾选择前，必须显式向用户汇报：
 
@@ -60,14 +60,16 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - 最初开始这次 change 时记录的 `origin_branch` 与 `origin_workspace_path`
 - 当前是否仍在原始分支/原始工作区
 
-如果当前分支或工作区不同于 `origin_*`，必须明确说明“你当前看到的是临时实现分支或临时 worktree”。此时默认展示删除 worktree / 归档组合选项；如果用户改为输入任意非编号内容，则表示当前功能还有问题，需要继续修改。
+如果当前分支或工作区不同于 `origin_*`，必须明确说明“你当前看到的是临时实现分支或临时 worktree”。此时必须按 base 分支是否为 `main` / `master` 决定收尾方式；如果用户改为输入任意非编号内容，则表示当前功能还有问题，需要继续修改。
 
-可选收尾路径只围绕两件事展开：
+可选收尾路径围绕三件事展开：
 
+- 合并临时 worktree 到 base 分支
+- 删除临时 worktree 并废弃代码
 - 删除 worktree
-- 执行归档
+- 执行归档（仅在代码被接受后单独询问）
 
-不要默认自动删除 worktree。删除与归档都是有后果的操作，必须来自用户选择。
+不要默认自动删除 `main` / `master` 目标下的 worktree。合并、废弃、删除与归档都是有后果的操作，必须遵守下方分支规则。
 
 ## 2.1 Superpowers Worktree 优先规则
 
@@ -83,54 +85,53 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 默认推荐顺序：
 
 1. 先在临时 worktree 完成 review。
-2. 如果无需继续修改，优先给出“删除 worktree 并归档”作为推荐收尾组合。
-3. 如果用户只想清理本地环境，则允许“仅删除 worktree”。
-4. 如果代码已经真正位于目标分支，则允许“仅归档”。
+2. 如果 base 分支不是 `main` / `master`，且无需继续修改，直接合并临时 worktree 到 base 分支并删除临时 worktree。
+3. 如果 base 分支是 `main` / `master`，必须提示用户选择“合并代码并删除 worktree”或“删除 worktree，废弃代码”。
+4. 合并完成后，如果用户接受了提交，再提示是否执行 OpenSpec archive。
+5. 如果代码已经真正位于目标分支，则允许“仅归档”。
 
-## 2.2 多选收尾组合
+## 2.2 worktree 收尾规则
 
-收尾选项不要再只做单选。动作本身就应围绕组合展开；组合输入使用编号列表，例如 `1,3`：
+如果当前是临时 worktree：
 
-- `删除 worktree`
-- `执行归档`
+- `origin_branch` 不是 `main` / `master`：直接执行 `merge-worktree`，把临时 worktree 分支合并到 `origin_branch` 所在工作区，然后删除临时 worktree 和已合入的本地临时分支。完成后提示用户是否归档。
+- `origin_branch` 是 `main` / `master`：必须展示以下编号菜单：
 
-推荐的组合校验逻辑：
-
-- `{删除 worktree 并归档}`：等价于 `{删除 worktree, 执行归档}`。
-- `{删除 worktree, 执行归档}`：合法。适用于临时 worktree 已完成使命，需要直接清理并归档。
-- `{仅删除 worktree}`：等价于 `{删除 worktree}`。
-- `{删除 worktree}`：合法。适用于只清理本地临时 worktree，稍后再归档。
-- `{仅归档}`：等价于 `{执行归档}`。
-- `{执行归档}`：仅当代码已经位于目标分支时合法；如果当前还在临时 branch / worktree，默认不合法。
-
-如果用户勾选了非法组合，必须明确指出冲突原因，不要替用户猜测执行顺序。
-
-默认推荐组合：
-
-- 当前在 Superpowers 临时 worktree：推荐 `{删除 worktree, 执行归档}`。
-- 当前在临时 worktree，但用户只想先清理本地环境：推荐 `{删除 worktree}`。
-- 当前不在临时 worktree，且代码已真正位于目标分支：推荐 `{执行归档}`。
-
-推荐向用户展示的收尾选项至少包含：
-
-1. 删除 worktree 并归档
-2. 仅删除 worktree
-3. 仅归档
-其他：如果意图不在以上选项里，允许用户直接补充说明；任意非编号内容视为继续修改当前实现
+```text
+1. 合并代码并删除 worktree
+2. 删除 worktree，废弃代码
+其他：任意非编号内容视为继续修改当前实现
+```
 
 菜单解释规则：
 
-- 用户回复 `1`：执行“删除 worktree 并归档”。
-- 用户回复 `2`：仅删除 worktree。
-- 用户回复 `3`：仅当代码已合并且归档前置条件满足时，执行 archive；否则先说明阻塞条件。
-- 用户回复多项编号，如 `1,3`：按组合规则校验。合法时按安全执行顺序运行；不合法时明确指出冲突原因。
+- 用户回复 `1`：执行 `merge-worktree`，合并代码并删除临时 worktree 和已合入的本地临时分支；完成后提示是否归档。
+- 用户回复 `2`：执行 `discard-worktree`，删除临时 worktree 并删除对应本地分支；废弃代码后不归档。
 - 用户输入数字外的自由文本：默认视为继续修改当前实现，直接回到代码处理环节；只有意图不清晰时才补一个最短澄清问题。
 
-如果用户之前已经在 `onespec-execute` 的完成菜单里选了 `1`、`2` 或 `3`，则这里不再重复上述菜单，而是直接按已选动作继续。
+如果当前不是临时 worktree，且代码已经真正位于目标分支，才允许单独执行 `archive`。
+
+不要把 `merge-worktree` 和 `archive` 放在同一次动作里执行。合并或废弃 worktree 是代码去向决策；归档是用户接受提交后的后续决策。
+
+## 2.3 归档提示
+
+只有当用户选择合并，或非 `main` / `master` base 分支按规则自动合并完成后，才提示是否执行 OpenSpec archive：
+
+```text
+代码已合并并删除临时 worktree。是否现在归档？
+
+1. 归档
+2. 暂不归档
+其他：任意非编号内容视为继续修改当前实现
+```
+
+如果用户选择废弃代码，不展示归档提示。
+
+如果用户之前已经在 `onespec-execute` 的完成菜单里选了收尾编号，则这里不再重复相同菜单，而是结合 `origin_branch` 执行对应动作；但归档仍然必须在代码被接受合并后单独询问。
 
 ## 3. 归档规则
 
-进入 archive 或删除 worktree 的最终收尾前，必须检查当前是否仍有“与本次 change 相关的未提交代码”：
+进入 merge、discard、delete 或 archive 的最终收尾前，必须检查当前是否仍有“与本次 change 相关的未提交代码”：
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_COMMIT" related-dirty <change-id>
@@ -160,19 +161,20 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
   2. 如果 archive 产生了新的归档工件或删除了 `.onespec.yaml`，archive 之后再自动补一笔归档提交。
   3. 如果只是删除临时 worktree，则在 origin 工作区保留状态文件后，再自动提交这份保留状态。
 - 如果代码已合并到目标分支且用户选择归档，直接执行 OpenSpec archive，并将状态设为 `archived`。
-- 如果用户当前只删除 worktree、不归档，将状态设为 `done`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
+- 如果用户合并 worktree 但暂不归档，将状态设为 `done`、`archive=skipped`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
+- 如果用户废弃 worktree，不执行归档，不把废弃分支代码合入 base 分支。
 - 只有真正执行 archive 后，才删除运行时状态文件：
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" cleanup-runtime <change-id>
 ```
 
-用户一旦通过收尾菜单明确选择了归档或组合归档动作，就把这次选择视为唯一确认；不要再追加第二次确认。
+用户一旦在“是否现在归档”菜单中明确选择归档，就把这次选择视为唯一确认；不要再追加第二次确认。
 
 实际执行收尾动作时，优先使用：
 
 ```bash
-"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" run-actions <change-id> [delete-worktree] [archive]
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" run-actions <change-id> [merge-worktree|discard-worktree|delete-worktree|archive]
 ```
 
 ```bash
@@ -185,7 +187,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - `tasks.md` 已按实际完成项勾选
 - 项目测试已通过，或未通过项已明确说明
 - `openspec validate <change-id> --strict` 已通过
-- 用户明确选择了删除 worktree、归档或它们的组合策略
+- 用户明确选择了合并、废弃、删除 worktree 或归档策略
 - 没有未处理的用户评审反馈
 
 ## 4. 汇报
@@ -193,7 +195,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 收尾汇报必须覆盖：
 
 - 用户评审结果
-- 选择的收尾路径：删除 worktree、归档或组合执行
+- 选择的收尾路径：合并 worktree、废弃 worktree、删除 worktree 或归档
 - 分支/worktree 的最终状态
 - 当前分支与 `origin_branch` 的关系，以及是否仍保留临时 worktree
 - `tasks.md`、测试与 OpenSpec validate 状态
@@ -205,6 +207,6 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 - 用户还没有完成最终评审
 - 用户没有明确选择收尾路径
-- 用户没有明确确认删除 worktree 或 OpenSpec archive
-- 代码未合并到目标分支且也未选择允许的删除 worktree 组合时，却要求单独 archive
+- 用户没有明确确认合并、废弃、删除 worktree 或 OpenSpec archive
+- 代码未合并到目标分支时，却要求单独 archive
 - 测试或 `openspec validate <change-id> --strict` 未通过且用户未明确接受风险

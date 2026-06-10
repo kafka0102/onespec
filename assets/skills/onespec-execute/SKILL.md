@@ -196,7 +196,7 @@ apply 前至少读取：
 📍 当前工作区: `<path>`
 📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
 
-1. 删除 worktree 并归档
+1. 进入收尾处理（按 base 分支规则合并或废弃 worktree；合并后再询问是否归档）
 2. 保持当前分支 / worktree 不变，先停在这里，稍后再继续
 其他：任意非编号内容视为继续修改当前实现；如果意图不在以上选项里，也可以直接补充说明
 ---
@@ -204,7 +204,7 @@ apply 前至少读取：
 
 如果当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree；若你直接回复非编号内容，我会按继续修改处理。"
 
-这里的 `1` 本身就是对“删除 worktree 并归档”的明确授权。用户回复 `1` 后，后续进入 `onespec-archive` 时不得再次展示一轮收尾菜单，只能继续做状态检查并执行对应 closeout。
+这里的 `1` 本身就是进入 `onespec-archive` 收尾阶段的明确授权。用户回复 `1` 后，后续必须按 `onespec-archive` 的 worktree/base 分支规则处理：base 不是 `main` / `master` 时可自动合并并删除 worktree；base 是 `main` / `master` 时必须提示“合并代码并删除 worktree”或“删除 worktree，废弃代码”；只有代码被接受合并后，才继续询问是否归档。
 
 不要只停在“下一步应进入 `onespec-archive`”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户可直接回复的编号选项。
 
