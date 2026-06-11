@@ -113,6 +113,12 @@ If `origin_branch` or `origin_workspace_path` is still `unknown`, fill them in i
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_mode "$( "$ONESPEC_BASH" "$ONESPEC_STATE" get <change-id> workspace )"
 ```
 
+If the next step is to create a temporary worktree from the current branch, check for uncommitted changes first:
+
+- if the current workspace is dirty, handle those changes before creating the worktree
+- if the current branch is `main`/`master` and has uncommitted changes, require a local commit that follows the project commit policy before creating the worktree; do not carry dirty base-branch code straight into a new implementation branch
+- if the user refuses to commit the current dirty changes first, do not continue creating the worktree; pause, or switch to `current-branch` with an explicit risk callout
+
 Default execution path:
 
 - prefer `subagent-driven-development`
@@ -196,17 +202,18 @@ Current branch: <branch>
 Current workspace: <path>
 Origin: <origin_branch> @ <origin_workspace_path>
 
-1. Merge the temporary worktree into the base branch
-2. Delete the temporary worktree and discard the code
-3. Run archive
-4. Keep the current branch / worktree as-is and stop here for now
-Other: any non-numbered content means continue modifying the current implementation; if the intent is outside the menu, the user may also describe it directly
+1. Archive the current change, then merge the branch into the base branch
+2. Archive only, without merging
+3. Delete the current temporary worktree and discard the code
+Other: any non-numbered content means continue modifying the current implementation; if the user gives no input, remain paused in the current review stage
 ---
 ```
 
 If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
 
-Allow multi-action replies. The user may reply `1,3` to merge the temporary worktree back into the base branch and archive in the same closeout pass. `onespec-archive` must treat that numbered reply as full authorization and execute the selected actions directly without splitting them into another confirmation round.
+- If the user chooses `1`, `onespec-archive` must archive first, then merge the branch into the base branch.
+- If the user chooses `2`, `onespec-archive` must archive only, without merging and without auto-deleting the current worktree.
+- If the user chooses `3`, `onespec-archive` must delete the temporary worktree and discard the code without archiving.
 
 Do not stop at an abstract note such as "the next step is `onespec-archive`" or just "do review-closeout". You must also give the user a concrete numbered menu.
 

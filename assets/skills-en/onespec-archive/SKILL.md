@@ -49,9 +49,9 @@ Let the user review the implementation. If they raise issues, continue editing a
 
 After implementation is done, do not require another explicit review-confirmation step and do not show a generic "continue review / preserve branch" menu. First decide what happens to the temporary worktree code. If the user replies with any non-numbered content, treat that as a request to keep modifying the implementation and return directly to code work.
 
-Do not make the user guess what to type next. If the user enters `onespec-archive` without having made a closeout choice yet, provide a numbered menu. If multiple actions can be combined, allow comma-separated digits such as `1,3`.
+Do not make the user guess what to type next. If the user enters `onespec-archive` without having made a closeout choice yet, provide a numbered menu.
 
-If the user arrived from the `onespec-execute` completion report and already replied with a closeout number there, treat that earlier reply as the only required authorization. Do not show the same menu again and do not add an intermediate "should I handle merge/archive?" confirmation. At that point, only report the required state checks and execute the selected actions directly.
+If the user arrived from the `onespec-execute` completion report and already replied with a closeout number there, treat that earlier reply as the only required authorization. Do not show the same menu again and do not add an intermediate "should I handle merge/archive?" confirmation. At that point, only report the required state checks and execute the selected actions directly without splitting closeout into a second confirmation round.
 
 Before offering closeout choices, explicitly tell the user:
 
@@ -62,12 +62,11 @@ Before offering closeout choices, explicitly tell the user:
 
 If the current branch or workspace differs from the recorded `origin_*` fields, explicitly say that the implementation is now living in a temporary branch or temporary worktree. If the user switches to free-form text, treat it as a request for more code changes.
 
-Supported closeout paths revolve around these actions:
+Supported closeout paths are limited to these three outcomes:
 
-- merge the temporary worktree into the base branch
-- delete the temporary worktree and discard the code
-- delete worktree
-- run archive
+- Archive the current change, then merge the branch into the base branch
+- Archive only, without merging
+- Delete the current temporary worktree and discard the code
 
 Merge, discard, deletion, and archive are consequential actions, but once the user has explicitly selected them in the numbered menu, execute them directly without another confirmation round.
 
@@ -85,31 +84,29 @@ The agent must tell the user:
 Default recommended order:
 
 1. finish review inside the temporary worktree
-2. if no more implementation work is needed, directly merge the temporary worktree into the base branch and delete the temporary worktree
-3. if archive is already part of the selected closeout actions, run OpenSpec archive in the same closeout pass
+2. if no more implementation work is needed, archive first, then merge the temporary worktree into the base branch and delete the temporary worktree
+3. if the user only wants to preserve the archive record without merging code, allow archive-only
 4. if the user wants to discard the code, delete the worktree and drop the local temporary branch
-5. if the code is already truly on the target branch, allow `run archive` only
 
 ## 2.2 Worktree Closeout Rules
 
 If the current workspace is a temporary worktree, show this menu:
 
 ```text
-1. Merge the temporary worktree into the base branch
-2. Delete the temporary worktree and discard the code
-3. Run archive
-Other: any non-numbered content means continue modifying the current implementation
+1. Archive the current change, then merge the branch into the base branch
+2. Archive only, without merging
+3. Delete the current temporary worktree and discard the code
+Other: any non-numbered content means continue modifying the current implementation; if the user gives no input, remain paused in the current review stage
 ```
 
 Menu interpretation:
 
-- reply `1`: run `merge-worktree`; merge the code, then delete the temporary worktree and the merged local temporary branch.
-- reply `2`: run `discard-worktree`; delete the temporary worktree and delete the matching local branch. Do not archive discarded code.
-- reply `1,3`: run `merge-worktree,archive`; merge, delete the worktree, and archive in one closeout pass. Do not split that into two confirmations.
-- reply `3`: allow `archive` only when the code is already truly on the target branch.
+- reply `1`: run `archive-then-merge-worktree`; archive first, then merge into the base branch, then delete the temporary worktree and the merged local temporary branch.
+- reply `2`: run `archive-only`; archive immediately, do not merge into the base branch, and do not auto-delete the current worktree.
+- reply `3`: run `discard-worktree`; delete the temporary worktree and delete the matching local branch. Do not archive discarded code.
 - any non-numbered content means continue modifying the current implementation; ask only one short clarification if the intent is unclear.
 
-If the current workspace is not a temporary worktree and the code is already truly on the target branch, `archive` is allowed.
+If the current workspace is not a temporary worktree and the code is already truly on the target branch, `archive-only` is allowed.
 
 If the user already selected a closeout number in the `onespec-execute` completion menu, do not repeat the same menu here; combine that reply with the actual workspace state and execute the matching action directly.
 
@@ -143,9 +140,9 @@ Before merge, discard, delete, or archive is finalized, always check whether the
 - recommended order:
   1. auto-commit current-workspace dirty files related to the change before closeout continues
   2. if archive creates new archive artifacts or removes `.onespec.yaml`, auto-commit the archive result after archive finishes
-  3. if the user only deletes a temporary worktree, auto-commit the preserved runtime state after copying it back into the origin workspace
-- If code is merged into the target branch and the user chooses archive, run OpenSpec archive immediately and set state to `archived`.
-- If the user selects `merge-worktree` without `archive`, set state to `done`, `archive=skipped`, and explain that archive can be run later. Do not delete `.onespec.yaml`.
+  3. if the user chooses archive-then-merge, merge the implementation branch back into the base branch only after the archive commit is complete
+- If the user selects `archive-then-merge-worktree`, archive first, then merge into the target branch, and set state to `archived`.
+- If the user selects `archive-only`, run OpenSpec archive and set state to `archived`; do not auto-merge and do not auto-delete the current worktree.
 - If the user discards the worktree, do not archive and do not merge discarded branch code into the base branch.
 - Only after archive actually runs should the runtime state file be removed:
 
@@ -156,7 +153,7 @@ Before merge, discard, delete, or archive is finalized, always check whether the
 For actual closeout execution, prefer:
 
 ```bash
-"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" run-actions <change-id> [merge-worktree|discard-worktree|delete-worktree|archive]
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" run-actions <change-id> [archive-then-merge-worktree|archive-only|discard-worktree]
 ```
 
 ```bash
@@ -169,7 +166,7 @@ Before archiving, confirm:
 - `tasks.md` is checked off to match reality
 - project tests passed, or any failures are explicitly called out
 - `openspec validate <change-id> --strict` passed
-- the user explicitly chose a merge, discard, delete-worktree, or archive strategy
+- the user explicitly chose archive-then-merge, archive-only, or discard-worktree
 - no user-review feedback remains unresolved
 
 ## 4. Report
@@ -177,9 +174,9 @@ Before archiving, confirm:
 The closeout report must cover:
 
 - user review result
-- selected closeout path: merge worktree, discard worktree, delete worktree, or archive
+- selected closeout path: archive then merge, archive only, or discard worktree
 - final branch/worktree state
-- how the current branch relates to `origin_branch`, and whether a temporary worktree is still preserved
+- how the current branch relates to `origin_branch`, and whether a temporary worktree is still kept locally
 - status of `tasks.md`, tests, and OpenSpec validate
 - archive field: `skipped` or `archived`
 
@@ -189,6 +186,5 @@ Pause and explain if:
 
 - the user has not finished final review
 - the user has not explicitly chosen a closeout path
-- the user has not explicitly approved merge, discard, worktree deletion, or OpenSpec archive
-- code is not merged into the target branch and the user asks to archive
+- the user has not explicitly approved archive-then-merge, archive-only, or discard-worktree
 - tests or `openspec validate <change-id> --strict` are failing and the user has not explicitly accepted the risk

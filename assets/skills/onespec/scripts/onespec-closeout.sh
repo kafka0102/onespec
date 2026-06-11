@@ -91,32 +91,20 @@ selected_actions_csv() {
   printf '%s\n' "$joined"
 }
 
-state_destination_in_origin() {
-  local change="$1"
-  local origin_path
-  origin_path="$(canonicalize_path "$(get_state_value "$change" origin_workspace_path)")"
-  [ -n "$origin_path" ] || die "origin workspace path is empty"
-  [ "$origin_path" != "unknown" ] || die "origin workspace path is unknown"
-  printf '%s/openspec/changes/%s/.onespec.yaml\n' "$origin_path" "$change"
-}
-
 origin_workspace_path_for_change() {
   canonicalize_path "$(get_state_value "$1" origin_workspace_path)"
 }
 
 normalize_action() {
   case "$1" in
-    merge-worktree|merge|accept-worktree|accept)
-      echo "merge-worktree"
+    archive-then-merge-worktree|merge-after-archive|archive-then-merge|merge-worktree|merge|accept-worktree|accept)
+      echo "archive-then-merge-worktree"
       ;;
-    discard-worktree|discard|drop-code)
+    archive-only|archive|run-archive)
+      echo "archive-only"
+      ;;
+    discard-worktree|discard|drop-code|delete-worktree|drop-worktree|cleanup-worktree)
       echo "discard-worktree"
-      ;;
-    delete-worktree|drop-worktree|cleanup-worktree)
-      echo "delete-worktree"
-      ;;
-    archive|run-archive)
-      echo "archive"
       ;;
     "")
       echo ""
@@ -177,10 +165,10 @@ recommended_combination() {
   reason="review-only"
 
   if [ "$temporary" = "true" ]; then
-    recommendation="merge-worktree"
+    recommendation="archive-then-merge-worktree"
     reason="temporary-worktree-targets-base-branch"
   else
-    recommendation="archive"
+    recommendation="archive-only"
     reason="already-on-target-path"
   fi
 
@@ -224,10 +212,9 @@ cmd_validate_actions() {
   local -a selected=()
   local action normalized
   local already_selected
-  local has_merge_worktree="false"
+  local has_archive_then_merge="false"
+  local has_archive_only="false"
   local has_discard_worktree="false"
-  local has_delete_worktree="false"
-  local has_archive="false"
   local current_head origin_branch temporary valid message
 
   for action in "$@"; do
@@ -247,10 +234,9 @@ cmd_validate_actions() {
 
   for action in "${selected[@]}"; do
     case "$action" in
-      merge-worktree) has_merge_worktree="true" ;;
+      archive-then-merge-worktree) has_archive_then_merge="true" ;;
+      archive-only) has_archive_only="true" ;;
       discard-worktree) has_discard_worktree="true" ;;
-      delete-worktree) has_delete_worktree="true" ;;
-      archive) has_archive="true" ;;
     esac
   done
 
@@ -260,43 +246,23 @@ cmd_validate_actions() {
   origin_branch="$(get_state_value "$change" origin_branch)"
   temporary="$(temporary_worktree_status "$change" | awk -F ': ' '$1 == "temporary_worktree" { print $2 }')"
 
-  if [ "$has_merge_worktree" = "true" ] && [ "$has_discard_worktree" = "true" ]; then
+  if [ "${#selected[@]}" -gt 1 ]; then
     valid="false"
-    message="不能同时选择合并和废弃临时 worktree。"
-  elif [ "$has_discard_worktree" = "true" ] && [ "$has_archive" = "true" ]; then
+    message="当前收尾菜单一次只允许选择一个动作。"
+  elif [ "$has_archive_then_merge" = "true" ] && [ "$temporary" != "true" ]; then
     valid="false"
-    message="不能废弃代码后归档：只有用户接受并合并提交后才允许询问归档。"
-  elif [ "$has_merge_worktree" = "true" ] && [ "$temporary" != "true" ]; then
-    valid="false"
-    message="不能合并 worktree：当前不在临时 worktree。"
+    message="不能先归档再合并：当前不在临时 worktree。"
   elif [ "$has_discard_worktree" = "true" ] && [ "$temporary" != "true" ]; then
     valid="false"
     message="不能废弃 worktree：当前不在临时 worktree。"
-  elif [ "$has_merge_worktree" = "true" ]; then
-    if [ "$has_archive" = "true" ]; then
-      message="允许自动合并临时 worktree 到 ${origin_branch} 并删除 worktree，然后继续归档。"
-    else
-      message="允许自动合并临时 worktree 到 ${origin_branch} 并删除 worktree。"
-    fi
+  elif [ "$has_archive_then_merge" = "true" ]; then
+    message="允许先归档当前 change，再把临时 worktree 合并到 ${origin_branch} 并删除 worktree。"
   elif [ "$has_discard_worktree" = "true" ]; then
-    message="允许删除临时 worktree 并废弃对应本地分支代码；废弃后不应归档。"
-  elif [ "$has_delete_worktree" = "true" ] && [ "$temporary" != "true" ]; then
-    valid="false"
-    message="不能删除 worktree：当前不在临时 worktree。"
-  elif [ "$has_archive" = "true" ] && [ "$has_delete_worktree" = "true" ]; then
-    valid="false"
-    message="不再支持删除 worktree 与归档一次完成：应先合并或废弃 worktree，合并后再询问是否归档。"
-  elif [ "$has_delete_worktree" = "true" ] && [ "$has_archive" != "true" ]; then
-    message="允许仅删除临时 worktree并保留对应本地分支；如需废弃代码请使用 discard-worktree。"
-  elif [ "$has_archive" = "true" ] && [ "$has_delete_worktree" != "true" ]; then
-    if [ "$temporary" = "true" ] || { [ "$origin_branch" != "unknown" ] && [ "$current_head" != "$origin_branch" ]; }; then
-      valid="false"
-      message="不能单独执行归档：当前代码尚未确认位于目标分支。"
-    else
-      message="允许单独执行归档：当前已在目标分支路径上。"
-    fi
+    message="允许删除临时 worktree 并废弃对应本地分支代码；废弃后不归档。"
+  elif [ "$has_archive_only" = "true" ]; then
+    message="允许直接归档当前 change，不合并到 base 分支，也不自动删除当前 worktree。"
   elif [ "${#selected[@]}" -eq 0 ]; then
-    message="本次不删除 worktree 或归档；之后仍可再次进入收尾。"
+    message="本次保持当前评审阶段不变；之后仍可再次进入收尾。"
   fi
 
   cat <<EOF
@@ -339,18 +305,6 @@ run_cleanup_runtime_in_workspace() {
   )
 }
 
-preserve_runtime_state_in_origin() {
-  local change="$1"
-  local source_file destination_file destination_dir
-  source_file="$(state_file "$change")"
-  destination_file="$(state_destination_in_origin "$change")"
-  destination_dir="$(dirname "$destination_file")"
-
-  mkdir -p "$destination_dir"
-  cp "$source_file" "$destination_file"
-  printf '%s\n' "$destination_file"
-}
-
 delete_current_worktree() {
   local current_path common_dir
   current_path="$(current_workspace_path)"
@@ -361,12 +315,22 @@ delete_current_worktree() {
 
 merge_current_worktree_to_origin() {
   local change="$1"
+  local cached_origin_branch="${2:-}"
+  local cached_origin_workspace="${3:-}"
   local current_path current_head origin_branch origin_workspace origin_head
 
   current_path="$(current_workspace_path)"
   current_head="$(current_branch)"
-  origin_branch="$(get_state_value "$change" origin_branch)"
-  origin_workspace="$(origin_workspace_path_for_change "$change")"
+  if [ -n "$cached_origin_branch" ]; then
+    origin_branch="$cached_origin_branch"
+  else
+    origin_branch="$(get_state_value "$change" origin_branch)"
+  fi
+  if [ -n "$cached_origin_workspace" ]; then
+    origin_workspace="$cached_origin_workspace"
+  else
+    origin_workspace="$(origin_workspace_path_for_change "$change")"
+  fi
 
   [ -n "$origin_workspace" ] || die "origin workspace path is empty"
   [ "$origin_workspace" != "unknown" ] || die "origin workspace path is unknown"
@@ -376,8 +340,8 @@ merge_current_worktree_to_origin() {
   origin_head="$(git -C "$origin_workspace" branch --show-current 2>/dev/null || true)"
   [ "$origin_head" = "$origin_branch" ] || die "origin workspace is on ${origin_head:-detached}, expected $origin_branch"
 
-  if [ -n "$(git -C "$origin_workspace" status --porcelain=v1)" ]; then
-    die "origin workspace has uncommitted changes: $origin_workspace"
+  if [ -n "$(git -C "$origin_workspace" status --porcelain=v1 --untracked-files=no)" ]; then
+    die "origin workspace has tracked uncommitted changes: $origin_workspace"
   fi
 
   git -C "$origin_workspace" merge "$current_head"
@@ -435,9 +399,10 @@ cmd_run_actions() {
   valid_change "$change"
   ensure_git_repo
 
-  local validation selected valid archive_selected delete_selected preserved_state removed_worktree
-  local merge_selected discard_selected merged_branch discarded_branch merge_result
-  local pre_closeout_commit post_archive_commit preserved_state_commit origin_workspace_path
+  local validation selected valid archive_then_merge_selected archive_only_selected removed_worktree
+  local discard_selected merged_branch discarded_branch merge_result
+  local pre_closeout_commit post_archive_commit preserved_state_commit
+  local origin_branch_cached origin_workspace_cached
   local action_workspace archive_workspace
   validation="$(cmd_validate_actions "$change" "$@")"
   selected="$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "selected_actions" { print $2 }')"
@@ -446,35 +411,27 @@ cmd_run_actions() {
   [ "$valid" = "true" ] || die "$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "message" { print $2 }')"
   [ -n "$selected" ] || die "run-actions requires at least one closeout action"
   action_workspace="$(current_workspace_path)"
-  origin_workspace_path="$(origin_workspace_path_for_change "$change")"
   archive_workspace="$action_workspace"
+  origin_branch_cached="$(get_state_value "$change" origin_branch)"
+  origin_workspace_cached="$(origin_workspace_path_for_change "$change")"
 
-  archive_selected="false"
-  delete_selected="false"
-  merge_selected="false"
+  archive_then_merge_selected="false"
+  archive_only_selected="false"
   discard_selected="false"
-  if printf '%s\n' "$selected" | grep -Eq '(^|,)merge-worktree($|,)'; then
-    merge_selected="true"
+  if printf '%s\n' "$selected" | grep -Eq '(^|,)archive-then-merge-worktree($|,)'; then
+    archive_then_merge_selected="true"
+  fi
+  if printf '%s\n' "$selected" | grep -Eq '(^|,)archive-only($|,)'; then
+    archive_only_selected="true"
   fi
   if printf '%s\n' "$selected" | grep -Eq '(^|,)discard-worktree($|,)'; then
     discard_selected="true"
   fi
-  if printf '%s\n' "$selected" | grep -Eq '(^|,)archive($|,)'; then
-    archive_selected="true"
-  fi
-  if printf '%s\n' "$selected" | grep -Eq '(^|,)delete-worktree($|,)'; then
-    delete_selected="true"
-  fi
 
-  preserved_state=""
   removed_worktree=""
   merged_branch="none"
   discarded_branch="none"
   merge_result=""
-  if [ "$merge_selected" = "true" ]; then
-    run_state_set_in_workspace "$action_workspace" "$change" phase done
-    run_state_set_in_workspace "$action_workspace" "$change" archive skipped
-  fi
   if [ "$discard_selected" = "true" ]; then
     pre_closeout_commit='commit_created: false
 commit_context: closeout
@@ -492,20 +449,13 @@ commit_context: preserve-state
 commit_sha: none
 commit_message: none'
 
-  if [ "$merge_selected" = "true" ]; then
-    merge_result="$(merge_current_worktree_to_origin "$change")"
-    merged_branch="$(commit_field "$merge_result" merged_branch)"
-    archive_workspace="$origin_workspace_path"
-    removed_worktree="$(delete_current_worktree_and_merged_branch)"
-  fi
-
   if [ "$discard_selected" = "true" ]; then
     discarded_branch="$(current_branch)"
     removed_worktree="$(current_workspace_path)"
     delete_current_worktree_branch >/dev/null
   fi
 
-  if [ "$archive_selected" = "true" ]; then
+  if [ "$archive_then_merge_selected" = "true" ] || [ "$archive_only_selected" = "true" ]; then
     run_archive_command "$archive_workspace" "$change"
     run_state_set_in_workspace "$archive_workspace" "$change" phase archived
     run_state_set_in_workspace "$archive_workspace" "$change" archive archived
@@ -513,31 +463,27 @@ commit_message: none'
     post_archive_commit="$(run_commit_related "$archive_workspace" "$change" archive)"
   fi
 
-  if [ "$delete_selected" = "true" ]; then
-    if [ "$archive_selected" != "true" ]; then
-      run_state_set_in_workspace "$action_workspace" "$change" phase done
-      run_state_set_in_workspace "$action_workspace" "$change" archive skipped
-      preserved_state="$(preserve_runtime_state_in_origin "$change")"
-      preserved_state_commit="$(run_commit_related "$origin_workspace_path" "$change" preserve-state)"
-    fi
-    removed_worktree="$(delete_current_worktree)"
+  if [ "$archive_then_merge_selected" = "true" ]; then
+    merge_result="$(merge_current_worktree_to_origin "$change" "$origin_branch_cached" "$origin_workspace_cached")"
+    merged_branch="$(commit_field "$merge_result" merged_branch)"
+    removed_worktree="$(delete_current_worktree_and_merged_branch)"
   fi
 
   cat <<EOF
 selected_actions: $selected
-worktree_merged: $merge_selected
+worktree_merged: $archive_then_merge_selected
 merged_branch: $merged_branch
 worktree_discarded: $discard_selected
 discarded_branch: $discarded_branch
-archive_executed: $archive_selected
-worktree_deleted: $(if [ "$delete_selected" = "true" ] || [ "$merge_selected" = "true" ] || [ "$discard_selected" = "true" ]; then echo "true"; else echo "false"; fi)
+archive_executed: $(if [ "$archive_then_merge_selected" = "true" ] || [ "$archive_only_selected" = "true" ]; then echo "true"; else echo "false"; fi)
+worktree_deleted: $(if [ "$archive_then_merge_selected" = "true" ] || [ "$discard_selected" = "true" ]; then echo "true"; else echo "false"; fi)
 pre_closeout_commit_created: $(commit_field "$pre_closeout_commit" commit_created)
 pre_closeout_commit_sha: $(commit_field "$pre_closeout_commit" commit_sha)
 post_archive_commit_created: $(commit_field "$post_archive_commit" commit_created)
 post_archive_commit_sha: $(commit_field "$post_archive_commit" commit_sha)
 preserved_state_commit_created: $(commit_field "$preserved_state_commit" commit_created)
 preserved_state_commit_sha: $(commit_field "$preserved_state_commit" commit_sha)
-preserved_state_file: ${preserved_state:-none}
+preserved_state_file: none
 deleted_worktree_path: ${removed_worktree:-none}
 EOF
 }
@@ -559,8 +505,8 @@ usage() {
 用法:
   onespec-closeout.sh inspect <change>
   onespec-closeout.sh recommend-actions <change>
-  onespec-closeout.sh validate-actions <change> [merge-worktree] [discard-worktree] [delete-worktree] [archive]
-  onespec-closeout.sh run-actions <change> [merge-worktree] [discard-worktree] [delete-worktree] [archive]
+  onespec-closeout.sh validate-actions <change> [archive-then-merge-worktree] [archive-only] [discard-worktree]
+  onespec-closeout.sh run-actions <change> [archive-then-merge-worktree] [archive-only] [discard-worktree]
   onespec-closeout.sh cleanup-runtime <change>
 EOF
 }

@@ -98,10 +98,10 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     'review-closeout',
     '进入用户评审',
     '直接给出收尾动作菜单',
-    '可直接回复 `1,3`',
-    '合并临时 worktree 到 base 分支',
-    '执行归档',
-    '任意非编号内容视为继续修改当前实现',
+    '归档当前 change，并合并分支到 base 分支',
+    '直接归档，不合并到 base 分支',
+    '删除当前临时 worktree，废弃代码',
+    '用户未输入时默认停留在当前评审阶段',
     '不要只停在“下一步应进入 `onespec-archive`”',
     'openspec validate <change-id> --strict',
   ]) {
@@ -120,11 +120,12 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     'Superpowers Worktree 优先规则',
     'origin_workspace_mode=worktree',
     'worktree 收尾规则',
-    '`merge-worktree`',
+    '`archive-then-merge-worktree`',
+    '`archive-only`',
     '`discard-worktree`',
-    '`merge-worktree,archive`',
-    '合并临时 worktree 到 base 分支',
-    '删除临时 worktree，废弃代码',
+    '归档当前 change，并合并分支到 base 分支',
+    '直接归档，不合并到 base 分支',
+    '删除当前临时 worktree，废弃代码',
     '当前分支名',
     'origin_branch',
     '临时实现分支或临时 worktree',
@@ -135,7 +136,8 @@ test('onespec-archive documents review closeout and archive guardrails', async (
     '已经回复了收尾编号',
     '按用户已选动作直接执行',
     '不需要拆成两轮确认',
-    'run-actions <change-id> [merge-worktree|discard-worktree|delete-worktree|archive]',
+    '先归档，再合并',
+    'run-actions <change-id> [archive-then-merge-worktree|archive-only|discard-worktree]',
     '.onespec.yaml',
     '临时压缩包、导出包或交接工件',
     'merge / rebase / push 仍不自动执行',
@@ -183,9 +185,25 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   expectIncludes(await readEnglishSkill('onespec-execute'), 'Anti-Patterns');
   expectIncludes(await readEnglishSkill('onespec-execute'), '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>');
   expectIncludes(await readEnglishSkill('onespec-execute'), 'temporary zip, export bundle');
-  expectIncludes(await readEnglishSkill('onespec-archive'), 'Merge the temporary worktree into the base branch');
-  expectIncludes(await readEnglishSkill('onespec-archive'), 'Delete the temporary worktree and discard the code');
-  expectIncludes(await readEnglishSkill('onespec-archive'), 'run `merge-worktree,archive`');
+  expectIncludes(
+    await readEnglishSkill('onespec-execute'),
+    'Archive the current change, then merge the branch into the base branch'
+  );
+  expectIncludes(await readEnglishSkill('onespec-execute'), 'Archive only, without merging');
+  expectIncludes(
+    await readEnglishSkill('onespec-execute'),
+    'Delete the current temporary worktree and discard the code'
+  );
+  expectIncludes(
+    await readEnglishSkill('onespec-archive'),
+    'Archive the current change, then merge the branch into the base branch'
+  );
+  expectIncludes(await readEnglishSkill('onespec-archive'), 'Archive only, without merging');
+  expectIncludes(
+    await readEnglishSkill('onespec-archive'),
+    'Delete the current temporary worktree and discard the code'
+  );
+  expectIncludes(await readEnglishSkill('onespec-archive'), 'run `archive-then-merge-worktree`');
   expectIncludes(await readEnglishSkill('onespec-archive'), 'temporary zip files, export bundles');
   expectIncludes(await readEnglishSkill('onespec-design'), 'extensible module');
   assert.doesNotMatch(

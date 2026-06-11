@@ -199,6 +199,9 @@ If the user picked item 2, keep using the same "explicit options + recommendatio
 - Do not implement directly on `main`/`master` unless the user explicitly accepts the risk after being warned.
 - If the current branch is `main`/`master` and the user chooses `Superpowers`, do not auto-create a worktree from the branch name alone. Follow the chosen workspace policy. If `current-branch` is selected, warn and record `main-override`.
 - If already on a feature branch and the workspace is clean, `current-branch` is acceptable.
+- If the plan is to switch into a `worktree` but the current workspace is dirty, handle those changes first before creating the worktree. In particular, do not create a temporary worktree while carrying uncommitted `main`/`master` changes.
+- For uncommitted changes on `main`/`master`, require a local commit that follows the project's commit policy before creating the temporary branch/worktree. Do not implicitly carry dirty base-branch code into a new implementation branch.
+- If the user refuses to commit the current dirty changes first, do not continue creating the worktree. Stop, switch to `current-branch`, or ask the user to clean up the branch state first.
 
 After confirmation record:
 

@@ -59,7 +59,7 @@ fi
   return { scriptPath, logPath };
 }
 
-test('onespec-closeout inspect recommends automatic merge when a temporary worktree targets main', async () => {
+test('onespec-closeout inspect recommends archive-then-merge when a temporary worktree targets main', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
@@ -114,11 +114,11 @@ test('onespec-closeout inspect recommends automatic merge when a temporary workt
   assert.match(stdout, /cleanup_local_branch_after_preserve: false/);
   assert.match(stdout, /cleanup_local_branch_after_discard: true/);
   assert.match(stdout, /cleanup_local_worktree_after_discard: true/);
-  assert.match(stdout, /recommended_actions: merge-worktree/);
+  assert.match(stdout, /recommended_actions: archive-then-merge-worktree/);
   assert.match(stdout, /recommended_reason: temporary-worktree-targets-base-branch/);
 });
 
-test('onespec-closeout inspect recommends automatic merge when temporary worktree targets a feature base branch', async () => {
+test('onespec-closeout inspect recommends archive-then-merge when temporary worktree targets a feature base branch', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
@@ -157,11 +157,11 @@ test('onespec-closeout inspect recommends automatic merge when temporary worktre
 
   assert.match(stdout, /temporary_worktree: true/);
   assert.match(stdout, /origin_branch: release\/risk/);
-  assert.match(stdout, /recommended_actions: merge-worktree/);
+  assert.match(stdout, /recommended_actions: archive-then-merge-worktree/);
   assert.match(stdout, /recommended_reason: temporary-worktree-targets-base-branch/);
 });
 
-test('onespec-closeout validate-actions allows archive on target branch and recommends archive there', async () => {
+test('onespec-closeout validate-actions allows archive-only on target branch and recommends archive-only there', async () => {
   const projectPath = await tmpProject();
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
 
@@ -174,21 +174,21 @@ test('onespec-closeout validate-actions allows archive on target branch and reco
 
   const invalid = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'validate-actions', 'archive-login', 'archive'],
+    [closeoutScriptPath, 'validate-actions', 'archive-login', 'archive-only'],
     { cwd: projectPath },
   );
   const recommended = await execFileAsync('bash', [closeoutScriptPath, 'recommend-actions', 'archive-login'], {
     cwd: projectPath,
   });
 
-  assert.match(invalid.stdout, /selected_actions: archive/);
+  assert.match(invalid.stdout, /selected_actions: archive-only/);
   assert.match(invalid.stdout, /valid: true/);
-  assert.match(invalid.stdout, /允许单独执行归档：当前已在目标分支路径上。/);
+  assert.match(invalid.stdout, /允许直接归档当前 change，不合并到 base 分支，也不自动删除当前 worktree。/);
   assert.match(recommended.stdout, /temporary_worktree: false/);
-  assert.match(recommended.stdout, /recommended_actions: archive/);
+  assert.match(recommended.stdout, /recommended_actions: archive-only/);
 });
 
-test('onespec-closeout validate-actions rejects archive without deleting a temporary worktree', async () => {
+test('onespec-closeout validate-actions allows archive-only inside a temporary worktree', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
@@ -222,16 +222,16 @@ test('onespec-closeout validate-actions rejects archive without deleting a tempo
 
   const { stdout } = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'validate-actions', 'ship-login', 'archive'],
+    [closeoutScriptPath, 'validate-actions', 'ship-login', 'archive-only'],
     { cwd: worktreePath },
   );
 
-  assert.match(stdout, /selected_actions: archive/);
-  assert.match(stdout, /valid: false/);
-  assert.match(stdout, /不能单独执行归档：当前代码尚未确认位于目标分支。/);
+  assert.match(stdout, /selected_actions: archive-only/);
+  assert.match(stdout, /valid: true/);
+  assert.match(stdout, /允许直接归档当前 change，不合并到 base 分支，也不自动删除当前 worktree。/);
 });
 
-test('onespec-closeout validate-actions supports merge-or-discard from a temporary worktree and allows merge with archive in one step', async () => {
+test('onespec-closeout validate-actions supports archive-then-merge or discard from a temporary worktree and rejects multiple actions', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
@@ -263,9 +263,9 @@ test('onespec-closeout validate-actions supports merge-or-discard from a tempora
     { cwd: worktreePath },
   );
 
-  const mergeWorktree = await execFileAsync(
+  const archiveThenMerge = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'validate-actions', 'trim-login', 'merge-worktree'],
+    [closeoutScriptPath, 'validate-actions', 'trim-login', 'archive-then-merge-worktree'],
     { cwd: worktreePath },
   );
   const discardWorktree = await execFileAsync(
@@ -273,23 +273,23 @@ test('onespec-closeout validate-actions supports merge-or-discard from a tempora
     [closeoutScriptPath, 'validate-actions', 'trim-login', 'discard-worktree'],
     { cwd: worktreePath },
   );
-  const mergeAndArchive = await execFileAsync(
+  const multipleActions = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'validate-actions', 'trim-login', 'merge-worktree', 'archive'],
+    [closeoutScriptPath, 'validate-actions', 'trim-login', 'archive-then-merge-worktree', 'archive-only'],
     { cwd: worktreePath },
   );
 
-  assert.match(mergeWorktree.stdout, /selected_actions: merge-worktree/);
-  assert.match(mergeWorktree.stdout, /valid: true/);
-  assert.match(mergeWorktree.stdout, /允许自动合并临时 worktree 到 main 并删除 worktree。/);
+  assert.match(archiveThenMerge.stdout, /selected_actions: archive-then-merge-worktree/);
+  assert.match(archiveThenMerge.stdout, /valid: true/);
+  assert.match(archiveThenMerge.stdout, /允许先归档当前 change，再把临时 worktree 合并到 main 并删除 worktree。/);
 
   assert.match(discardWorktree.stdout, /selected_actions: discard-worktree/);
   assert.match(discardWorktree.stdout, /valid: true/);
-  assert.match(discardWorktree.stdout, /允许删除临时 worktree 并废弃对应本地分支代码；废弃后不应归档。/);
+  assert.match(discardWorktree.stdout, /允许删除临时 worktree 并废弃对应本地分支代码；废弃后不归档。/);
 
-  assert.match(mergeAndArchive.stdout, /selected_actions: merge-worktree,archive/);
-  assert.match(mergeAndArchive.stdout, /valid: true/);
-  assert.match(mergeAndArchive.stdout, /允许自动合并临时 worktree 到 main 并删除 worktree，然后继续归档。/);
+  assert.match(multipleActions.stdout, /selected_actions: archive-then-merge-worktree,archive-only/);
+  assert.match(multipleActions.stdout, /valid: false/);
+  assert.match(multipleActions.stdout, /当前收尾菜单一次只允许选择一个动作。/);
 });
 
 test('onespec-closeout cleanup-runtime removes the single runtime state file only when requested', async () => {
@@ -309,7 +309,7 @@ test('onespec-closeout cleanup-runtime removes the single runtime state file onl
   await assert.rejects(access(statePath));
 });
 
-test('onespec-closeout run-actions merges a temporary worktree into a feature base branch and removes the worktree', async () => {
+test('onespec-closeout run-actions archives first, then merges a temporary worktree into a feature base branch and removes the worktree', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
@@ -348,25 +348,29 @@ test('onespec-closeout run-actions merges a temporary worktree into a feature ba
   await mkdir(path.join(worktreePath, 'src'), { recursive: true });
   await writeFile(path.join(worktreePath, 'src', 'feature.js'), 'export const feature = 1;\n');
   await execFileAsync('bash', [commitScriptPath, 'track', 'merge-login', 'src/feature.js'], { cwd: worktreePath });
+  await writeFile(path.join(worktreePath, 'openspec', 'changes', 'merge-login', 'proposal.md'), '# Proposal\n');
+  const { scriptPath: archiveBin, logPath } = await writeFakeArchiveBin(projectPath);
 
   const { stdout } = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'run-actions', 'merge-login', 'merge-worktree'],
-    { cwd: worktreePath },
+    [closeoutScriptPath, 'run-actions', 'merge-login', 'archive-then-merge-worktree'],
+    {
+      cwd: worktreePath,
+      env: { ...process.env, ONESPEC_ARCHIVE_BIN: archiveBin },
+    },
   );
 
-  assert.match(stdout, /selected_actions: merge-worktree/);
+  assert.match(stdout, /selected_actions: archive-then-merge-worktree/);
   assert.match(stdout, /worktree_merged: true/);
   assert.match(stdout, /merged_branch: feature\/merge-login/);
   assert.match(stdout, /worktree_deleted: true/);
-  assert.match(stdout, /archive_executed: false/);
+  assert.match(stdout, /archive_executed: true/);
   assert.match(stdout, /pre_closeout_commit_created: true/);
+  assert.match(stdout, /post_archive_commit_created: true/);
   await assert.rejects(access(worktreePath));
   await access(path.join(projectPath, 'src', 'feature.js'));
-
-  const state = await readFile(path.join(projectPath, 'openspec', 'changes', 'merge-login', '.onespec.yaml'), 'utf8');
-  assert.match(state, /phase: done/);
-  assert.match(state, /archive: skipped/);
+  await access(path.join(projectPath, 'openspec', 'changes', 'archive', 'merge-login', 'archive-note.txt'));
+  assert.match(await readFile(logPath, 'utf8'), /archive merge-login --yes/);
 
   const { stdout: branch } = await execFileAsync('git', ['branch', '--show-current'], { cwd: projectPath });
   assert.equal(branch.trim(), 'release/risk');
@@ -375,7 +379,7 @@ test('onespec-closeout run-actions merges a temporary worktree into a feature ba
   assert.equal(branches.stdout.trim(), '');
 });
 
-test('onespec-closeout run-actions can merge a temporary worktree and archive in one step', async () => {
+test('onespec-closeout run-actions can archive-only inside a temporary worktree without deleting it', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
@@ -425,31 +429,29 @@ test('onespec-closeout run-actions can merge a temporary worktree and archive in
 
   const { stdout } = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'run-actions', 'merge-archive-login', 'merge-worktree', 'archive'],
+    [closeoutScriptPath, 'run-actions', 'merge-archive-login', 'archive-only'],
     {
       cwd: worktreePath,
       env: { ...process.env, ONESPEC_ARCHIVE_BIN: archiveBin },
     },
   );
 
-  assert.match(stdout, /selected_actions: merge-worktree,archive/);
-  assert.match(stdout, /worktree_merged: true/);
+  assert.match(stdout, /selected_actions: archive-only/);
+  assert.match(stdout, /worktree_merged: false/);
   assert.match(stdout, /archive_executed: true/);
-  assert.match(stdout, /worktree_deleted: true/);
+  assert.match(stdout, /worktree_deleted: false/);
   assert.match(stdout, /pre_closeout_commit_created: true/);
   assert.match(stdout, /post_archive_commit_created: true/);
-  await assert.rejects(access(worktreePath));
-  await assert.rejects(access(path.join(projectPath, 'openspec', 'changes', 'merge-archive-login', '.onespec.yaml')));
-  await assert.rejects(
-    access(path.join(projectPath, 'openspec', 'changes', 'merge-archive-login')),
-  );
-  await access(path.join(projectPath, 'openspec', 'changes', 'archive', 'merge-archive-login', 'archive-note.txt'));
+  await access(worktreePath);
+  await assert.rejects(access(path.join(worktreePath, 'openspec', 'changes', 'merge-archive-login', '.onespec.yaml')));
+  await assert.rejects(access(path.join(worktreePath, 'openspec', 'changes', 'merge-archive-login')));
+  await access(path.join(worktreePath, 'openspec', 'changes', 'archive', 'merge-archive-login', 'archive-note.txt'));
   assert.match(await readFile(logPath, 'utf8'), /archive merge-archive-login --yes/);
 
   const branches = await execFileAsync('git', ['branch', '--list', 'feature/merge-archive-login'], {
     cwd: projectPath,
   });
-  assert.equal(branches.stdout.trim(), '');
+  assert.match(branches.stdout, /feature\/merge-archive-login/);
 });
 
 test('onespec-closeout run-actions discards a temporary worktree branch without merging it', async () => {
@@ -508,7 +510,7 @@ test('onespec-closeout run-actions discards a temporary worktree branch without 
   assert.equal(branches.stdout.trim(), '');
 });
 
-test('onespec-closeout run-actions executes archive once and removes runtime state on the target branch', async () => {
+test('onespec-closeout run-actions executes archive-only once and removes runtime state on the target branch', async () => {
   const projectPath = await tmpProject();
   const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
   const commitScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
@@ -532,14 +534,14 @@ test('onespec-closeout run-actions executes archive once and removes runtime sta
 
   const { stdout } = await execFileAsync(
     'bash',
-    [closeoutScriptPath, 'run-actions', 'archive-run', 'archive'],
+    [closeoutScriptPath, 'run-actions', 'archive-run', 'archive-only'],
     {
       cwd: projectPath,
       env: { ...process.env, ONESPEC_ARCHIVE_BIN: archiveBin },
     },
   );
 
-  assert.match(stdout, /selected_actions: archive/);
+  assert.match(stdout, /selected_actions: archive-only/);
   assert.match(stdout, /archive_executed: true/);
   assert.match(stdout, /worktree_deleted: false/);
   assert.match(stdout, /pre_closeout_commit_created: true/);
@@ -556,78 +558,4 @@ test('onespec-closeout run-actions executes archive once and removes runtime sta
 
   const { stdout: status } = await execFileAsync('git', ['status', '--porcelain=v1'], { cwd: projectPath });
   assert.deepEqual(status.trim().split('\n').sort(), ['?? archive.log', '?? fake-openspec.sh']);
-});
-
-test('onespec-closeout run-actions deletes a temporary worktree and preserves runtime state in origin workspace', async () => {
-  const projectPath = await tmpProject();
-  const worktreePath = await tmpProject('onespec-closeout-wt-');
-  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
-  const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
-  const commitScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
-  const preservedStatePath = path.join(projectPath, 'openspec', 'changes', 'preserve-login', '.onespec.yaml');
-
-  await initGitRepo(projectPath);
-  await initChangeState(projectPath, 'preserve-login', {
-    origin_branch: 'main',
-    origin_workspace_path: projectPath,
-    origin_workspace_mode: 'worktree',
-  });
-  await advanceChangeToReview(projectPath, 'preserve-login');
-
-  await execFileAsync('git', ['worktree', 'add', '-b', 'feature/preserve-login', worktreePath, 'HEAD'], {
-    cwd: projectPath,
-  });
-  await mkdir(path.join(worktreePath, 'openspec', 'changes', 'preserve-login'), { recursive: true });
-  await execFileAsync('bash', [stateScriptPath, 'init', 'preserve-login'], { cwd: worktreePath });
-  await execFileAsync('bash', [stateScriptPath, 'set', 'preserve-login', 'origin_branch', 'main'], {
-    cwd: worktreePath,
-  });
-  await execFileAsync(
-    'bash',
-    [stateScriptPath, 'set', 'preserve-login', 'origin_workspace_path', projectPath],
-    { cwd: worktreePath },
-  );
-  await execFileAsync(
-    'bash',
-    [stateScriptPath, 'set', 'preserve-login', 'origin_workspace_mode', 'worktree'],
-    { cwd: worktreePath },
-  );
-  await advanceChangeToReview(worktreePath, 'preserve-login');
-  await mkdir(path.join(worktreePath, 'src'), { recursive: true });
-  await writeFile(path.join(worktreePath, 'src', 'feature.js'), 'export const feature = 1;\n');
-  await execFileAsync('git', ['add', 'src/feature.js'], { cwd: worktreePath });
-  await execFileAsync('git', ['commit', '-m', 'seed feature'], { cwd: worktreePath });
-  await execFileAsync('bash', [commitScriptPath, 'track', 'preserve-login', 'src/feature.js'], { cwd: worktreePath });
-  await writeFile(path.join(worktreePath, 'src', 'feature.js'), 'export const feature = 2;\n');
-
-  const { stdout } = await execFileAsync(
-    'bash',
-    [closeoutScriptPath, 'run-actions', 'preserve-login', 'delete-worktree'],
-    { cwd: worktreePath },
-  );
-
-  assert.match(stdout, /selected_actions: delete-worktree/);
-  assert.match(stdout, /archive_executed: false/);
-  assert.match(stdout, /worktree_deleted: true/);
-  assert.match(stdout, /pre_closeout_commit_created: true/);
-  assert.match(stdout, /post_archive_commit_created: false/);
-  assert.match(stdout, /preserved_state_commit_created: true/);
-  await assert.rejects(access(worktreePath));
-
-  const preservedState = await readFile(preservedStatePath, 'utf8');
-  assert.match(preservedState, /phase: done/);
-  assert.match(preservedState, /archive: skipped/);
-
-  const { stdout: originStatus } = await execFileAsync('git', ['status', '--porcelain=v1'], { cwd: projectPath });
-  assert.equal(originStatus.trim(), '');
-
-  const { stdout: originSubject } = await execFileAsync('git', ['log', '-1', '--pretty=%s'], { cwd: projectPath });
-  assert.equal(originSubject.trim(), 'chore(docs): preserve preserve-login closeout state');
-
-  const { stdout: branchSubject } = await execFileAsync(
-    'git',
-    ['log', 'feature/preserve-login', '-1', '--pretty=%s'],
-    { cwd: projectPath },
-  );
-  assert.equal(branchSubject.trim(), 'chore(src): record preserve-login before closeout');
 });

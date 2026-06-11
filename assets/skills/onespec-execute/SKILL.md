@@ -113,6 +113,12 @@ apply 前至少读取：
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> origin_workspace_mode "$( "$ONESPEC_BASH" "$ONESPEC_STATE" get <change-id> workspace )"
 ```
 
+如果接下来要从当前分支创建临时 worktree，先检查当前工作区是否有未提交改动：
+
+- 若当前工作区是 dirty，必须先处理这些改动，再创建 worktree。
+- 若当前分支是 `main`/`master` 且存在未提交改动，默认要求先按项目提交规范创建本地 commit，再创建 worktree；不允许把未提交的 base 分支代码直接带进新的实现分支。
+- 若用户不接受先提交当前 dirty 改动，则不要继续创建 worktree；应暂停，或改走 `current-branch` 路线并明确风险。
+
 默认执行路径：
 
 - 优先使用 `subagent-driven-development`。
@@ -196,17 +202,18 @@ apply 前至少读取：
 📍 当前工作区: `<path>`
 📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
 
-1. 合并临时 worktree 到 base 分支
-2. 删除临时 worktree，废弃代码
-3. 执行归档
-4. 保持当前分支 / worktree 不变，先停在这里，稍后再继续
-其他：任意非编号内容视为继续修改当前实现；如果意图不在以上选项里，也可以直接补充说明
+1. 归档当前 change，并合并分支到 base 分支
+2. 直接归档，不合并到 base 分支
+3. 删除当前临时 worktree，废弃代码
+其他：任意非编号内容视为继续修改当前实现；用户未输入时默认停留在当前评审阶段
 ---
 ```
 
 如果当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree；若你直接回复非编号内容，我会按继续修改处理。"
 
-允许多动作组合，用户可直接回复 `1,3`，表示把临时 worktree 合并回 base 分支并在同一次收尾里执行归档。`onespec-archive` 必须把这类编号回复视为完整授权，按用户所选动作直接执行，不再拆成二次确认。
+- 选择 `1` 时，`onespec-archive` 必须按“先归档，再合并分支到 base 分支”的固定顺序执行。
+- 选择 `2` 时，`onespec-archive` 只做归档，不合并分支，也不自动删除当前 worktree。
+- 选择 `3` 时，`onespec-archive` 删除当前临时 worktree 并废弃代码，不执行归档。
 
 不要只停在“下一步应进入 `onespec-archive`”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户可直接回复的编号选项。
 

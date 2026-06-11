@@ -199,6 +199,9 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 - 不在 `main`/`master` 上直接实现，除非用户在看到风险提示后明确要求。
 - 如果当前在 `main`/`master` 且选择 `Superpowers`，不因分支名自动创建 worktree；按用户或项目默认工作区设置处理。若使用 `current-branch`，先提示风险并记录为 `main-override`。
 - 如果当前在功能分支且工作区干净，可以使用 `current-branch`。
+- 如果准备切到 `worktree`，但当前工作区存在未提交改动，必须先处理这些改动，再创建 worktree。尤其当前分支是 `main`/`master` 时，不允许带着未提交代码直接创建临时 worktree。
+- 对 `main`/`master` 上的未提交改动，默认要求先按项目提交规范创建本地 commit，再创建临时分支 / worktree；不要把未提交的 base 分支代码隐式带进新的实现分支。
+- 如果用户明确拒绝先提交当前 dirty 改动，则不要继续创建 worktree；此时只能停下等待、改走 `current-branch`，或让用户先整理当前分支状态。
 
 确认后记录：
 
