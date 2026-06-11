@@ -69,6 +69,7 @@ test('onespec-design documents proposal and approval routing guardrails', async 
     '可直接回复：`批准，按推荐路径继续`',
     '可直接回复：`使用 worktree`',
     '`低复杂度`：默认推荐原生 `OpenSpec apply`',
+    '默认要求先按项目提交规范创建本地 commit，再创建临时分支 / worktree',
   ]) {
     expectIncludes(skill, expected);
   }
@@ -91,6 +92,7 @@ test('onespec-execute documents apply, planning, and implementation guardrails',
     '"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase implementing',
     'origin_branch',
     'origin_workspace_path',
+    '默认要求先按项目提交规范创建本地 commit，再创建 worktree',
     '优先使用 `subagent-driven-development`',
     '强制遵守 `test-driven-development`',
     '不允许实现结果与已批准 OpenSpec 范围静默漂移',
@@ -184,6 +186,14 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   expectIncludes(await readEnglishSkill('onespec-execute'), 'numbered next-step menu');
   expectIncludes(await readEnglishSkill('onespec-execute'), 'Anti-Patterns');
   expectIncludes(await readEnglishSkill('onespec-execute'), '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>');
+  expectIncludes(
+    await readEnglishSkill('onespec-design'),
+    "require a local commit that follows the project's commit policy before creating the temporary branch/worktree"
+  );
+  expectIncludes(
+    await readEnglishSkill('onespec-execute'),
+    'require a local commit that follows the project commit policy before creating the worktree'
+  );
   expectIncludes(await readEnglishSkill('onespec-execute'), 'temporary zip, export bundle');
   expectIncludes(
     await readEnglishSkill('onespec-execute'),
