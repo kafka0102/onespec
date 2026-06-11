@@ -156,7 +156,7 @@ Pause and explain if:
 
 > This gate is mandatory. If it is not satisfied, do not output a completion summary, do not give closeout suggestions, and do not enter the next phase.
 
-After implementation and verification, the flow must pause explicitly. Do not continue directly into merge, worktree deletion, archive, or any implicit closeout. The goal here is to enter user-review / `review-closeout` waiting state. After development finishes, ask only whether archive-related cleanup should happen; do not require a separate review-confirmation step first.
+After implementation and verification, the flow must pause explicitly. Do not continue directly into merge, worktree deletion, archive, or any implicit closeout. The goal here is to enter user-review / `review-closeout` waiting state. After development finishes, present the closeout action menu directly; do not require a separate review-confirmation step first and do not split archive into a second confirmation round.
 
 ### 5.1 Mandatory Script Calls
 
@@ -196,15 +196,17 @@ Current branch: <branch>
 Current workspace: <path>
 Origin: <origin_branch> @ <origin_workspace_path>
 
-1. Enter closeout (merge or discard the worktree using the base-branch rules; ask about archive after merge)
-2. Keep the current branch / worktree as-is and stop here for now
+1. Merge the temporary worktree into the base branch
+2. Delete the temporary worktree and discard the code
+3. Run archive
+4. Keep the current branch / worktree as-is and stop here for now
 Other: any non-numbered content means continue modifying the current implementation; if the intent is outside the menu, the user may also describe it directly
 ---
 ```
 
 If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
 
-That `1` is explicit authorization to enter `onespec-archive` closeout. After the user replies `1`, `onespec-archive` must apply the worktree/base-branch rules: if the base is not `main` / `master`, it may automatically merge and delete the worktree; if the base is `main` / `master`, it must ask whether to merge the code and delete the worktree or delete the worktree and discard the code. Ask about archive only after code is accepted and merged.
+Allow multi-action replies. The user may reply `1,3` to merge the temporary worktree back into the base branch and archive in the same closeout pass. `onespec-archive` must treat that numbered reply as full authorization and execute the selected actions directly without splitting them into another confirmation round.
 
 Do not stop at an abstract note such as "the next step is `onespec-archive`" or just "do review-closeout". You must also give the user a concrete numbered menu.
 

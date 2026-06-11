@@ -104,11 +104,6 @@ origin_workspace_path_for_change() {
   canonicalize_path "$(get_state_value "$1" origin_workspace_path)"
 }
 
-is_main_or_master_branch() {
-  local branch="$1"
-  [ "$branch" = "main" ] || [ "$branch" = "master" ]
-}
-
 normalize_action() {
   case "$1" in
     merge-worktree|merge|accept-worktree|accept)
@@ -182,13 +177,8 @@ recommended_combination() {
   reason="review-only"
 
   if [ "$temporary" = "true" ]; then
-    if is_main_or_master_branch "$(get_state_value "$change" origin_branch)"; then
-      recommendation="prompt-merge-or-discard"
-      reason="temporary-worktree-targets-main-or-master"
-    else
-      recommendation="merge-worktree"
-      reason="temporary-worktree-targets-feature-branch"
-    fi
+    recommendation="merge-worktree"
+    reason="temporary-worktree-targets-base-branch"
   else
     recommendation="archive"
     reason="already-on-target-path"
@@ -273,9 +263,6 @@ cmd_validate_actions() {
   if [ "$has_merge_worktree" = "true" ] && [ "$has_discard_worktree" = "true" ]; then
     valid="false"
     message="不能同时选择合并和废弃临时 worktree。"
-  elif [ "$has_merge_worktree" = "true" ] && [ "$has_archive" = "true" ]; then
-    valid="false"
-    message="不能同时选择合并 worktree 和归档：合并完成后应再询问用户是否归档。"
   elif [ "$has_discard_worktree" = "true" ] && [ "$has_archive" = "true" ]; then
     valid="false"
     message="不能废弃代码后归档：只有用户接受并合并提交后才允许询问归档。"
@@ -286,10 +273,10 @@ cmd_validate_actions() {
     valid="false"
     message="不能废弃 worktree：当前不在临时 worktree。"
   elif [ "$has_merge_worktree" = "true" ]; then
-    if is_main_or_master_branch "$origin_branch"; then
-      message="允许合并临时 worktree 到 ${origin_branch} 并删除 worktree；合并后需要再询问是否归档。"
+    if [ "$has_archive" = "true" ]; then
+      message="允许自动合并临时 worktree 到 ${origin_branch} 并删除 worktree，然后继续归档。"
     else
-      message="允许自动合并临时 worktree 到 ${origin_branch} 并删除 worktree；合并后需要再询问是否归档。"
+      message="允许自动合并临时 worktree 到 ${origin_branch} 并删除 worktree。"
     fi
   elif [ "$has_discard_worktree" = "true" ]; then
     message="允许删除临时 worktree 并废弃对应本地分支代码；废弃后不应归档。"
@@ -323,9 +310,33 @@ EOF
 }
 
 run_archive_command() {
-  local change="$1"
+  local workspace="$1"
+  local change="$2"
   local archive_bin="${ONESPEC_ARCHIVE_BIN:-openspec}"
-  "$archive_bin" archive "$change" --yes
+  (
+    cd "$workspace"
+    "$archive_bin" archive "$change" --yes
+  )
+}
+
+run_state_set_in_workspace() {
+  local workspace="$1"
+  local change="$2"
+  local key="$3"
+  local value="$4"
+  (
+    cd "$workspace"
+    "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" "$key" "$value"
+  )
+}
+
+run_cleanup_runtime_in_workspace() {
+  local workspace="$1"
+  local change="$2"
+  (
+    cd "$workspace"
+    "${BASH:-bash}" "$(script_dir)/onespec-closeout.sh" cleanup-runtime "$change" >/dev/null
+  )
 }
 
 preserve_runtime_state_in_origin() {
@@ -427,12 +438,16 @@ cmd_run_actions() {
   local validation selected valid archive_selected delete_selected preserved_state removed_worktree
   local merge_selected discard_selected merged_branch discarded_branch merge_result
   local pre_closeout_commit post_archive_commit preserved_state_commit origin_workspace_path
+  local action_workspace archive_workspace
   validation="$(cmd_validate_actions "$change" "$@")"
   selected="$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "selected_actions" { print $2 }')"
   valid="$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "valid" { print $2 }')"
 
   [ "$valid" = "true" ] || die "$(printf '%s\n' "$validation" | awk -F ': ' '$1 == "message" { print $2 }')"
   [ -n "$selected" ] || die "run-actions requires at least one closeout action"
+  action_workspace="$(current_workspace_path)"
+  origin_workspace_path="$(origin_workspace_path_for_change "$change")"
+  archive_workspace="$action_workspace"
 
   archive_selected="false"
   delete_selected="false"
@@ -457,8 +472,8 @@ cmd_run_actions() {
   discarded_branch="none"
   merge_result=""
   if [ "$merge_selected" = "true" ]; then
-    "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" phase done
-    "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" archive skipped
+    run_state_set_in_workspace "$action_workspace" "$change" phase done
+    run_state_set_in_workspace "$action_workspace" "$change" archive skipped
   fi
   if [ "$discard_selected" = "true" ]; then
     pre_closeout_commit='commit_created: false
@@ -466,7 +481,7 @@ commit_context: closeout
 commit_sha: none
 commit_message: none'
   else
-    pre_closeout_commit="$(run_commit_related "$(current_workspace_path)" "$change" closeout)"
+    pre_closeout_commit="$(run_commit_related "$action_workspace" "$change" closeout)"
   fi
   post_archive_commit='commit_created: false
 commit_context: archive
@@ -480,6 +495,7 @@ commit_message: none'
   if [ "$merge_selected" = "true" ]; then
     merge_result="$(merge_current_worktree_to_origin "$change")"
     merged_branch="$(commit_field "$merge_result" merged_branch)"
+    archive_workspace="$origin_workspace_path"
     removed_worktree="$(delete_current_worktree_and_merged_branch)"
   fi
 
@@ -490,19 +506,18 @@ commit_message: none'
   fi
 
   if [ "$archive_selected" = "true" ]; then
-    run_archive_command "$change"
-    "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" phase archived
-    "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" archive archived
-    "${BASH:-bash}" "$(script_dir)/onespec-closeout.sh" cleanup-runtime "$change" >/dev/null
-    post_archive_commit="$(run_commit_related "$(current_workspace_path)" "$change" archive)"
+    run_archive_command "$archive_workspace" "$change"
+    run_state_set_in_workspace "$archive_workspace" "$change" phase archived
+    run_state_set_in_workspace "$archive_workspace" "$change" archive archived
+    run_cleanup_runtime_in_workspace "$archive_workspace" "$change"
+    post_archive_commit="$(run_commit_related "$archive_workspace" "$change" archive)"
   fi
 
   if [ "$delete_selected" = "true" ]; then
     if [ "$archive_selected" != "true" ]; then
-      "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" phase done
-      "${BASH:-bash}" "$(script_dir)/onespec-state.sh" set "$change" archive skipped
+      run_state_set_in_workspace "$action_workspace" "$change" phase done
+      run_state_set_in_workspace "$action_workspace" "$change" archive skipped
       preserved_state="$(preserve_runtime_state_in_origin "$change")"
-      origin_workspace_path="$(origin_workspace_path_for_change "$change")"
       preserved_state_commit="$(run_commit_related "$origin_workspace_path" "$change" preserve-state)"
     fi
     removed_worktree="$(delete_current_worktree)"

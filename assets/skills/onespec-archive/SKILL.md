@@ -5,7 +5,7 @@ description: 当用户需要对 OneSpec change 做最终评审、处理反馈、
 
 # OneSpec Archive
 
-用于 OneSpec 的评审、收尾与归档阶段。目标是在用户确认后合并或废弃临时 worktree，并在用户接受提交后再询问是否执行 OpenSpec archive。
+用于 OneSpec 的评审、收尾与归档阶段。目标是在用户确认后处理临时 worktree 的代码去向，并按用户已授权的动作完成合并、废弃或归档。
 
 开始时说明：
 
@@ -47,11 +47,11 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 实现完成后让用户评审。若用户指出问题，继续修改并重新验证。
 
-开发完成后不需要再次让用户确认是否 review，也不需要展示常规“继续评审 / 保留分支”类选项。收尾应先处理临时 worktree 中的代码去向；如果用户接受并合并了提交，再询问是否进行归档。如果用户回复任意非编号内容，默认视为“继续修改当前实现”，直接回到代码处理环节。
+开发完成后不需要再次让用户确认是否 review，也不需要展示常规“继续评审 / 保留分支”类选项。收尾应先处理临时 worktree 中的代码去向；如果用户回复任意非编号内容，默认视为“继续修改当前实现”，直接回到代码处理环节。
 
 不要让用户自己猜“下一步该输入什么”。如果用户是直接进入 `onespec-archive`，尚未做收尾选择，则必须给出可直接回复的编号选项；如果支持多动作组合，允许用户回复逗号分隔的数字，例如 `1,3`。
 
-如果用户是从 `onespec-execute` 的完成汇报进入这里，并且已经回复了收尾编号，则把那次回复视为唯一有效授权，不得再次展示一轮相同菜单。此时只需汇报必要状态检查，并按本阶段的 worktree/base 分支规则执行用户已选定的收尾动作。
+如果用户是从 `onespec-execute` 的完成汇报进入这里，并且已经回复了收尾编号，则把那次回复视为唯一有效授权，不得再次展示一轮相同菜单，也不得再追加“是否处理合并/归档”之类的中间确认。此时只需汇报必要状态检查，并按用户已选动作直接执行。
 
 进入收尾选择前，必须显式向用户汇报：
 
@@ -60,16 +60,16 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - 最初开始这次 change 时记录的 `origin_branch` 与 `origin_workspace_path`
 - 当前是否仍在原始分支/原始工作区
 
-如果当前分支或工作区不同于 `origin_*`，必须明确说明“你当前看到的是临时实现分支或临时 worktree”。此时必须按 base 分支是否为 `main` / `master` 决定收尾方式；如果用户改为输入任意非编号内容，则表示当前功能还有问题，需要继续修改。
+如果当前分支或工作区不同于 `origin_*`，必须明确说明“你当前看到的是临时实现分支或临时 worktree”。如果用户改为输入任意非编号内容，则表示当前功能还有问题，需要继续修改。
 
 可选收尾路径围绕三件事展开：
 
 - 合并临时 worktree 到 base 分支
 - 删除临时 worktree 并废弃代码
 - 删除 worktree
-- 执行归档（仅在代码被接受后单独询问）
+- 执行归档
 
-不要默认自动删除 `main` / `master` 目标下的 worktree。合并、废弃、删除与归档都是有后果的操作，必须遵守下方分支规则。
+合并、废弃、删除与归档都是有后果的操作；但只要用户已经在编号菜单里明确授权，就直接执行，不要再拆成二次确认。
 
 ## 2.1 Superpowers Worktree 优先规则
 
@@ -85,49 +85,33 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 默认推荐顺序：
 
 1. 先在临时 worktree 完成 review。
-2. 如果 base 分支不是 `main` / `master`，且无需继续修改，直接合并临时 worktree 到 base 分支并删除临时 worktree。
-3. 如果 base 分支是 `main` / `master`，必须提示用户选择“合并代码并删除 worktree”或“删除 worktree，废弃代码”。
-4. 合并完成后，如果用户接受了提交，再提示是否执行 OpenSpec archive。
+2. 如果无需继续修改，直接合并临时 worktree 到 base 分支并删除临时 worktree。
+3. 如果用户已经同时授权归档，可在同一次收尾里继续执行 OpenSpec archive。
+4. 如果用户要废弃代码，则删除 worktree 并丢弃本地临时分支。
 5. 如果代码已经真正位于目标分支，则允许“仅归档”。
 
 ## 2.2 worktree 收尾规则
 
-如果当前是临时 worktree：
-
-- `origin_branch` 不是 `main` / `master`：直接执行 `merge-worktree`，把临时 worktree 分支合并到 `origin_branch` 所在工作区，然后删除临时 worktree 和已合入的本地临时分支。完成后提示用户是否归档。
-- `origin_branch` 是 `main` / `master`：必须展示以下编号菜单：
+如果当前是临时 worktree，必须展示以下编号菜单：
 
 ```text
-1. 合并代码并删除 worktree
-2. 删除 worktree，废弃代码
+1. 合并临时 worktree 到 base 分支
+2. 删除临时 worktree，废弃代码
+3. 执行归档
 其他：任意非编号内容视为继续修改当前实现
 ```
 
 菜单解释规则：
 
-- 用户回复 `1`：执行 `merge-worktree`，合并代码并删除临时 worktree 和已合入的本地临时分支；完成后提示是否归档。
+- 用户回复 `1`：执行 `merge-worktree`，合并代码并删除临时 worktree 和已合入的本地临时分支。
 - 用户回复 `2`：执行 `discard-worktree`，删除临时 worktree 并删除对应本地分支；废弃代码后不归档。
+- 用户回复 `1,3`：执行 `merge-worktree,archive`，在同一次收尾里合并、删除 worktree 并归档；不需要拆成两轮确认。
+- 用户回复 `3`：只有代码已经真正位于目标分支时才允许单独执行 `archive`。
 - 用户输入数字外的自由文本：默认视为继续修改当前实现，直接回到代码处理环节；只有意图不清晰时才补一个最短澄清问题。
 
 如果当前不是临时 worktree，且代码已经真正位于目标分支，才允许单独执行 `archive`。
 
-不要把 `merge-worktree` 和 `archive` 放在同一次动作里执行。合并或废弃 worktree 是代码去向决策；归档是用户接受提交后的后续决策。
-
-## 2.3 归档提示
-
-只有当用户选择合并，或非 `main` / `master` base 分支按规则自动合并完成后，才提示是否执行 OpenSpec archive：
-
-```text
-代码已合并并删除临时 worktree。是否现在归档？
-
-1. 归档
-2. 暂不归档
-其他：任意非编号内容视为继续修改当前实现
-```
-
-如果用户选择废弃代码，不展示归档提示。
-
-如果用户之前已经在 `onespec-execute` 的完成菜单里选了收尾编号，则这里不再重复相同菜单，而是结合 `origin_branch` 执行对应动作；但归档仍然必须在代码被接受合并后单独询问。
+如果用户之前已经在 `onespec-execute` 的完成菜单里选了收尾编号，则这里不再重复相同菜单，而是结合实际工作区状态直接执行对应动作。
 
 ## 3. 归档规则
 
@@ -155,21 +139,19 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - 如果项目里没有明确规范，回退到通用 Conventional Commits：`<type>(<scope>): <简要描述>`。
 - 只能提交 `.onespec.yaml` 中记录的 tracked files 与当前脏文件的交集；如果 `.onespec.yaml` 本身是脏的，也应一并提交，不允许把无关改动一并提交。
 - 例外：位于 `openspec/changes/<change-id>/` 下、专属于本次 change 的临时压缩包、导出包或交接工件，也视为本次 change 相关文件；自动提交时要一并带上，这样 archive 后仍能保留在 change 历史里。
-- 自动提交只覆盖 closeout 所需的本地 commit，不代表获得了 merge / rebase / push 授权；这些动作仍然必须由用户单独明确要求。
+- 自动提交只覆盖 closeout 所需的本地 commit。用户在收尾编号菜单中选中的本地合并/归档动作，视为已授权；未包含在用户选择里的 merge / rebase / push 仍不自动执行。
 - 推荐顺序：
   1. closeout 前先自动提交当前工作区里与本次 change 相关的脏文件。
   2. 如果 archive 产生了新的归档工件或删除了 `.onespec.yaml`，archive 之后再自动补一笔归档提交。
   3. 如果只是删除临时 worktree，则在 origin 工作区保留状态文件后，再自动提交这份保留状态。
 - 如果代码已合并到目标分支且用户选择归档，直接执行 OpenSpec archive，并将状态设为 `archived`。
-- 如果用户合并 worktree 但暂不归档，将状态设为 `done`、`archive=skipped`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
+- 如果用户选择 `merge-worktree` 但未同时选择 `archive`，将状态设为 `done`、`archive=skipped`，并提示之后可再运行归档；此时不要删除 `.onespec.yaml`。
 - 如果用户废弃 worktree，不执行归档，不把废弃分支代码合入 base 分支。
 - 只有真正执行 archive 后，才删除运行时状态文件：
 
 ```bash
 "$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" cleanup-runtime <change-id>
 ```
-
-用户一旦在“是否现在归档”菜单中明确选择归档，就把这次选择视为唯一确认；不要再追加第二次确认。
 
 实际执行收尾动作时，优先使用：
 
