@@ -3,7 +3,7 @@ import { access, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { BUNDLED_ONESPEC_SKILLS } from './init.js';
+import { BUNDLED_ONESPEC_REFERENCE_FILES, BUNDLED_ONESPEC_SKILLS } from './init.js';
 import { getDiscoveryRoots, getPlatform, getSkillDir } from './platforms.js';
 
 const REQUIRED_SUPERPOWERS = [
@@ -64,7 +64,9 @@ async function isChineseOneSpec(projectPath, scope, platform) {
   const skillsDir = getSkillDir(projectPath, scope, platform);
   const installedSkills = [];
   const missingSkills = [];
+  const missingFiles = [];
   const skillPaths = {};
+  const referencePaths = {};
 
   for (const skillName of BUNDLED_ONESPEC_SKILLS) {
     const skillPath = path.join(skillsDir, skillName, 'SKILL.md');
@@ -76,14 +78,24 @@ async function isChineseOneSpec(projectPath, scope, platform) {
     }
   }
 
+  for (const referenceFile of BUNDLED_ONESPEC_REFERENCE_FILES) {
+    const referencePath = path.join(skillsDir, 'onespec', referenceFile);
+    referencePaths[referenceFile] = referencePath;
+    if (!(await exists(referencePath))) {
+      missingFiles.push(path.join('onespec', referenceFile));
+    }
+  }
+
   const routerPath = skillPaths.onespec;
   if (!(await exists(routerPath))) {
     return {
       installed: false,
       skillPath: routerPath,
       skillPaths,
+      referencePaths,
       installedSkills,
       missingSkills,
+      missingFiles,
       chinese: false,
     };
   }
@@ -92,11 +104,13 @@ async function isChineseOneSpec(projectPath, scope, platform) {
   const chinese = content.includes('OneSpec 工作流');
   const english = content.includes('# OneSpec Workflow');
   return {
-    installed: missingSkills.length === 0 && (chinese || english),
+    installed: missingSkills.length === 0 && missingFiles.length === 0 && (chinese || english),
     skillPath: routerPath,
     skillPaths,
+    referencePaths,
     installedSkills,
     missingSkills,
+    missingFiles,
     chinese,
     english,
     language: chinese ? 'zh' : english ? 'en' : 'unknown',
@@ -140,6 +154,10 @@ export async function doctorProject(projectPath, options = {}) {
   if (onespec.missingSkills.length > 0) {
     nextSteps.push(
       `缺少 OneSpec Skills：${onespec.missingSkills.join(', ')}。运行 \`onespec init --platform ${platform.id} --overwrite\` 补齐 OneSpec Skill bundle。`,
+    );
+  } else if (onespec.missingFiles.length > 0) {
+    nextSteps.push(
+      `缺少 OneSpec references：${onespec.missingFiles.join(', ')}。运行 \`onespec init --platform ${platform.id} --overwrite\` 补齐 OneSpec Skill bundle。`,
     );
   } else if (!onespec.installed) {
     nextSteps.push(`运行 \`onespec init --platform ${platform.id} --yes\` 安装 OneSpec Skill。`);

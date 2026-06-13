@@ -1,15 +1,6 @@
----
-name: onespec-design
-description: 当用户需要为 OpenSpec change 做需求澄清、proposal、design、tasks、spec delta、复杂度分析或批准路径选择时使用。
----
+# Design Phase
 
-# OneSpec Design
-
-用于 OneSpec 的设计与提案阶段。目标是把需求转成已审批前的 OpenSpec artifacts，并推荐后续执行路径。
-
-开始时说明：
-
-> 我正在使用 `onespec-design` 处理 proposal / design 阶段。
+供 `onespec` 在 `propose` 阶段按需读取。目标是把需求转成已审批前的 OpenSpec artifacts，并推荐后续执行路径。
 
 ## 1. 接入
 
@@ -27,7 +18,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，再决定是否继续设计阶段动作。
+`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_reference`、`next_gate` 与 `allowed_actions`，再决定是否继续设计阶段动作。
 
 读取最少必要上下文：
 
@@ -166,7 +157,7 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 
 - 用户回复 `1` 或 `批准，按推荐路径继续`：视为批准当前 artifacts，并接受当前推荐路径。
 - 用户回复 `2` 或 `批准，但我要改实现路径`：视为批准当前 artifacts，但要覆盖推荐路线；此时继续给出下一层显式选项，只询问仍未确认的维度。
-- 用户回复 `3` 或 `先修改 proposal`：继续留在 `onespec-design`，根据用户反馈修改 artifacts，不进入实现。
+- 用户回复 `3` 或 `先修改 proposal`：继续留在 design phase，根据用户反馈修改 artifacts，不进入实现。
 - 用户回复 `4` 或 `先停在设计阶段`：暂停在设计阶段，等待用户后续指令。
 - 用户输入其他自由文本：如果意图清晰，按用户自定义意图处理；如果仍有歧义，只追问一个最短的澄清问题。
 
@@ -216,7 +207,7 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase approved
 ```
 
-这里的 `origin_*` 字段表示“用户最初开始这次 change 时所在的分支和工作区”。后续如果实现发生在新 branch 或临时 worktree 中，`onespec-execute` 与 `onespec-archive` 必须拿它来提示用户当前 review 位置与收尾选项。
+这里的 `origin_*` 字段表示“用户最初开始这次 change 时所在的分支和工作区”。后续如果实现发生在新 branch 或临时 worktree 中，execute phase 与 archive phase 必须拿它来提示用户当前 review 位置与收尾选项。
 
 ## 5. 停止条件
 

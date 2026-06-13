@@ -235,54 +235,55 @@ cmd_recover() {
   for key in phase ambiguity complexity implementation_path execution_method workspace origin_branch origin_workspace_path origin_workspace_mode plan handoff_context handoff_purpose handoff_summary handoff_hash review_result archive updated_at; do
     printf '%s: %s\n' "$key" "$(field_value "$file" "$key")"
   done
-  local phase next_skill next_gate allowed_actions next_step
+  local phase next_skill next_reference next_gate allowed_actions next_step
   phase="$(field_value "$file" phase)"
+  next_skill="onespec"
 
   case "$phase" in
     intake)
-      next_skill="onespec-design"
+      next_reference="references/design.md"
       next_gate="ambiguity-scan"
       allowed_actions="scan-ambiguity,draft-proposal"
       next_step="执行歧义扫描，然后创建或恢复 OpenSpec 提案"
       ;;
     proposal-ready)
-      next_skill="onespec-design"
+      next_reference="references/design.md"
       next_gate="proposal-approval"
       allowed_actions="show-approval-menu,revise-artifacts,pause-design"
       next_step="汇总提案并展示编号批准选项，等待用户回复数字"
       ;;
     approved)
-      next_skill="onespec-execute"
+      next_reference="references/execute.md"
       next_gate="implementation-route"
       allowed_actions="confirm-route,create-plan,choose-workspace"
-      next_step="进入 \`onespec-execute\`，创建或校验实现计划"
+      next_step="读取 \`references/execute.md\`，创建或校验实现计划"
       ;;
     plan-ready)
-      next_skill="onespec-execute"
+      next_reference="references/execute.md"
       next_gate="start-implementation"
       allowed_actions="record-phase-implementing,start-work,track-files"
-      next_step="进入 \`onespec-execute\`，确认执行方式后开始实现，并先写入 \`phase implementing\`"
+      next_step="读取 \`references/execute.md\`，确认执行方式后开始实现，并先写入 \`phase implementing\`"
       ;;
     implementing)
-      next_skill="onespec-execute"
+      next_reference="references/execute.md"
       next_gate="implementation-in-progress"
       allowed_actions="continue-implementation,update-tasks,run-tests"
       next_step="继续未完成任务，然后更新 tasks.md"
       ;;
     review)
-      next_skill="onespec-archive"
+      next_reference="references/archive.md"
       next_gate="user-review-closeout"
       allowed_actions="request-changes,choose-closeout-action,direct-instruction"
-      next_step="等待用户评审；若用户回复非编号内容则继续修改，若用户明确选择收尾动作，则进入 \`onespec-archive\` 直接执行对应 closeout"
+      next_step="等待用户评审；若用户回复非编号内容则继续修改，若用户明确选择收尾动作，则读取 \`references/archive.md\` 直接执行对应 closeout"
       ;;
     done|archived)
-      next_skill="onespec-archive"
+      next_reference="references/archive.md"
       next_gate="no-implementation-work"
       allowed_actions="stop,archive-if-needed"
       next_step="没有剩余实现工作"
       ;;
     *)
-      next_skill="onespec"
+      next_reference="references/design.md"
       next_gate="repair-state"
       allowed_actions="inspect-artifacts,repair-state"
       next_step="检查 OpenSpec 产物并修复状态"
@@ -290,6 +291,7 @@ cmd_recover() {
   esac
 
   printf 'next_skill: %s\n' "$next_skill"
+  printf 'next_reference: %s\n' "$next_reference"
   printf 'next_gate: %s\n' "$next_gate"
   printf 'allowed_actions: %s\n' "$allowed_actions"
   printf '下一步: %s\n' "$next_step"

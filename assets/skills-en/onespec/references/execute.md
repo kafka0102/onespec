@@ -1,15 +1,6 @@
----
-name: onespec-execute
-description: Use when the user needs to execute an approved OpenSpec change, continue implementation, generate a Superpowers plan, run OpenSpec apply, sync tasks, or verify the result.
----
+# Execute Phase
 
-# OneSpec Execute
-
-Handles the execution phase for OneSpec. The goal is to implement only within approved scope and sync the outcome back into OpenSpec state.
-
-Announce at the start:
-
-> I am using `onespec-execute` for the apply / implementation phase.
+Read on demand from `onespec` during the `apply` phase. The goal is to implement only within approved scope and sync the outcome back into OpenSpec state.
 
 ## 1. Apply Routing
 
@@ -27,7 +18,7 @@ If a relevant change exists, you must continue with:
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding whether to continue execution-phase work.
+Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_reference`, `next_gate`, and `allowed_actions` before deciding whether to continue execution-phase work.
 
 Before apply, read at least:
 
@@ -211,11 +202,11 @@ Other: any non-numbered content means continue modifying the current implementat
 
 If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
 
-- If the user chooses `1`, `onespec-archive` must archive first, then merge the branch into the base branch.
-- If the user chooses `2`, `onespec-archive` must archive only, without merging and without auto-deleting the current worktree.
-- If the user chooses `3`, `onespec-archive` must delete the temporary worktree and discard the code without archiving.
+- If the user chooses `1`, archive phase must archive first, then merge the branch into the base branch.
+- If the user chooses `2`, archive phase must archive only, without merging and without auto-deleting the current worktree.
+- If the user chooses `3`, archive phase must delete the temporary worktree and discard the code without archiving.
 
-Do not stop at an abstract note such as "the next step is `onespec-archive`" or just "do review-closeout". You must also give the user a concrete numbered menu.
+Do not stop at an abstract note such as "the next step is archive phase" or just "do review-closeout". You must also give the user a concrete numbered menu.
 
 ### 5.4 Anti-Patterns (NEVER)
 
@@ -225,6 +216,6 @@ The following are gate violations:
 - omitting current branch / workspace information from the report
 - omitting a concrete numbered next-step menu
 - executing archive, merge, or worktree-deletion actions before the user has chosen one
-- entering `onespec-archive` before the user replies
-- replacing the concrete numbered menu with an abstract "next step is onespec-archive" statement
+- entering archive phase before the user replies
+- replacing the concrete numbered menu with an abstract "next step is archive phase" statement
 - deleting a temporary worktree before review is complete and the user explicitly asks for closeout

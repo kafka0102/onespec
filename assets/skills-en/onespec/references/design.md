@@ -1,15 +1,6 @@
----
-name: onespec-design
-description: Use when the user needs requirement clarification, proposal/design/tasks/spec deltas, complexity analysis, or approval-path selection for an OpenSpec change.
----
+# Design Phase
 
-# OneSpec Design
-
-Handles the design and proposal phase for OneSpec. The goal is to turn a request into pre-approval OpenSpec artifacts and recommend the correct implementation path.
-
-Announce at the start:
-
-> I am using `onespec-design` for the proposal/design phase.
+Read on demand from `onespec` during the `propose` phase. The goal is to turn a request into pre-approval OpenSpec artifacts and recommend the correct implementation path.
 
 ## 1. Intake
 
@@ -27,7 +18,7 @@ If a relevant change exists, you must continue with:
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding whether to continue design-phase work.
+Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_reference`, `next_gate`, and `allowed_actions` before deciding whether to continue design-phase work.
 
 Read the minimum necessary context:
 
@@ -166,7 +157,7 @@ Menu handling rules:
 
 - reply `1` or `approve and use the recommended path`: treat this as approval of the current artifacts and acceptance of the recommended path
 - reply `2` or `approve but change the implementation path`: treat this as approval of the current artifacts, but continue with another explicit-options menu for only the still-unconfirmed dimensions
-- reply `3` or `revise the proposal first`: stay in `onespec-design`, revise artifacts based on feedback, and do not enter implementation
+- reply `3` or `revise the proposal first`: stay in design phase, revise artifacts based on feedback, and do not enter implementation
 - reply `4` or `stay in design for now`: pause at the design phase and wait for later instructions
 - free-form text instead of digits: if intent is clear, follow it; otherwise ask one minimal clarification question
 
@@ -216,7 +207,7 @@ After confirmation record:
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase approved
 ```
 
-These `origin_*` fields represent the branch and workspace where the user originally started the change. If implementation later happens in a different branch or temporary worktree, `onespec-execute` and `onespec-archive` must use them when prompting for review and closeout.
+These `origin_*` fields represent the branch and workspace where the user originally started the change. If implementation later happens in a different branch or temporary worktree, execute phase and archive phase must use them when prompting for review and closeout.
 
 ## 5. Stop Conditions
 

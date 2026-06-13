@@ -20,13 +20,8 @@ async function tmpProject() {
   return mkdtemp(path.join(os.tmpdir(), 'onespec-init-'));
 }
 
-const BUNDLED_SKILLS = [
-  'onespec',
-  'onespec-fast',
-  'onespec-design',
-  'onespec-execute',
-  'onespec-archive',
-];
+const BUNDLED_SKILLS = ['onespec', 'onespec-fast'];
+const ONESPEC_REFERENCES = ['design.md', 'execute.md', 'archive.md', 'fast.md'];
 
 function projectSkillPath(projectPath, platform, ...parts) {
   return path.join(getProjectSkillDir(projectPath, platform), ...parts);
@@ -56,6 +51,9 @@ test('initProject installs bundled OneSpec skills and creates working directorie
   for (const skillName of BUNDLED_SKILLS) {
     const skillPath = projectSkillPath(projectPath, 'codex', skillName, 'SKILL.md');
     assert.match(await readFile(skillPath, 'utf8'), new RegExp(`name: ${skillName}`));
+  }
+  for (const reference of ONESPEC_REFERENCES) {
+    await stat(projectSkillPath(projectPath, 'codex', 'onespec', 'references', reference));
   }
 
   const stateScriptPath = projectSkillPath(projectPath, 'codex', 'onespec', 'scripts', 'onespec-state.sh');
@@ -164,9 +162,16 @@ test('initProject can install English skill overlays', async () => {
   assert.equal(result.languageName, 'English');
   assert.match(routerSkill, /# OneSpec Workflow/);
   assert.doesNotMatch(routerSkill, /# OneSpec 工作流/);
+
+  const designReference = await readFile(
+    projectSkillPath(projectPath, 'codex', 'onespec', 'references', 'design.md'),
+    'utf8',
+  );
+  assert.match(designReference, /# Design Phase/);
+  assert.doesNotMatch(designReference, /歧义扫描/);
 });
 
-test('initProject installs missing bundled skills even when router already exists', async () => {
+test('initProject installs missing fast entrypoint even when router already exists', async () => {
   const projectPath = await tmpProject();
   const routerDir = projectSkillPath(projectPath, 'codex', 'onespec');
   await mkdir(routerDir, { recursive: true });
@@ -178,17 +183,10 @@ test('initProject installs missing bundled skills even when router already exist
   });
 
   assert.equal(result.installedSkill, true);
-  assert.deepEqual(result.installedSkills, [
-    'onespec-fast',
-    'onespec-design',
-    'onespec-execute',
-    'onespec-archive',
-  ]);
+  assert.deepEqual(result.installedSkills, ['onespec-fast']);
   assert.deepEqual(result.skippedSkills, ['onespec']);
 
-  for (const skillName of ['onespec-fast', 'onespec-design', 'onespec-execute', 'onespec-archive']) {
-    await stat(projectSkillPath(projectPath, 'codex', skillName, 'SKILL.md'));
-  }
+  await stat(projectSkillPath(projectPath, 'codex', 'onespec-fast', 'SKILL.md'));
 });
 
 test('initProject skips existing skill unless overwrite is requested', async () => {
@@ -221,6 +219,26 @@ test('initProject skips existing skill unless overwrite is requested', async () 
   assert.deepEqual(third.installedSkills, BUNDLED_SKILLS);
 });
 
+test('initProject overwrite removes legacy OneSpec child skills', async () => {
+  const projectPath = await tmpProject();
+
+  for (const skillName of ['onespec-design', 'onespec-execute', 'onespec-archive']) {
+    await mkdir(projectSkillPath(projectPath, 'codex', skillName), { recursive: true });
+    await writeFile(projectSkillPath(projectPath, 'codex', skillName, 'SKILL.md'), 'legacy', 'utf8');
+  }
+
+  await initProject(projectPath, {
+    platform: 'codex',
+    scope: 'project',
+    yes: true,
+    overwrite: true,
+  });
+
+  for (const skillName of ['onespec-design', 'onespec-execute', 'onespec-archive']) {
+    await assert.rejects(stat(projectSkillPath(projectPath, 'codex', skillName, 'SKILL.md')));
+  }
+});
+
 test('initProject supports Claude Code project installs', async () => {
   const projectPath = await tmpProject();
 
@@ -237,6 +255,9 @@ test('initProject supports Claude Code project installs', async () => {
   for (const skillName of BUNDLED_SKILLS) {
     const skillPath = projectSkillPath(projectPath, 'claude-code', skillName, 'SKILL.md');
     assert.match(await readFile(skillPath, 'utf8'), new RegExp(`name: ${skillName}`));
+  }
+  for (const reference of ONESPEC_REFERENCES) {
+    await stat(projectSkillPath(projectPath, 'claude-code', 'onespec', 'references', reference));
   }
 
   const routerSkill = await readFile(
@@ -268,6 +289,9 @@ for (const platform of [
     for (const skillName of BUNDLED_SKILLS) {
       const skillPath = projectSkillPath(projectPath, platform.id, skillName, 'SKILL.md');
       assert.match(await readFile(skillPath, 'utf8'), new RegExp(`name: ${skillName}`));
+    }
+    for (const reference of ONESPEC_REFERENCES) {
+      await stat(projectSkillPath(projectPath, platform.id, 'onespec', 'references', reference));
     }
 
     const routerSkill = await readFile(

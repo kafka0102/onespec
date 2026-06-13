@@ -110,7 +110,8 @@ test('onespec-state allows execution-oriented phase transitions and emits struct
   );
 
   assert.match(recovery, /phase: implementing/);
-  assert.match(recovery, /next_skill: onespec-execute/);
+  assert.match(recovery, /next_skill: onespec/);
+  assert.match(recovery, /next_reference: references\/execute\.md/);
   assert.match(recovery, /next_gate: implementation-in-progress/);
   assert.match(recovery, /allowed_actions: continue-implementation,update-tasks,run-tests/);
 });
@@ -169,8 +170,9 @@ test('onespec-state review recovery tells the user how to enter closeout', async
     { cwd: projectPath },
   );
 
-  assert.match(recovery, /进入 `onespec-archive`/);
-  assert.match(recovery, /next_skill: onespec-archive/);
+  assert.match(recovery, /读取 `references\/archive\.md`/);
+  assert.match(recovery, /next_skill: onespec/);
+  assert.match(recovery, /next_reference: references\/archive\.md/);
   assert.match(recovery, /next_gate: user-review-closeout/);
   assert.match(recovery, /allowed_actions: request-changes,choose-closeout-action,direct-instruction/);
 });

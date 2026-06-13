@@ -2,7 +2,7 @@
 
 > English version: [README.md](README.md)
 
-OneSpec 是一个面向 agent 的 skill bundle 和 CLI，用来执行 OpenSpec + Superpowers 工作流。它会安装 `onespec`、`onespec-fast`、`onespec-design`、`onespec-execute`、`onespec-archive` 五个内置 skill，并把 AI Coding 任务路由到设计、执行和归档阶段。
+OneSpec 是一个面向 agent 的 skill bundle 和 CLI，用来执行 OpenSpec + Superpowers 工作流。它会安装 `onespec` 和 `onespec-fast` 两个内置 skill，并通过 `onespec/references/` 阶段模块把 AI Coding 任务路由到设计、执行和归档阶段。
 
 当前官方支持的平台：
 
@@ -52,7 +52,7 @@ onespec init
 4. 自动补齐 OpenSpec CLI
 5. 自动为所选平台初始化 OpenSpec
 6. 自动为所选平台安装 Superpowers skills
-7. 部署 OneSpec 内置 skills：`onespec`、`onespec-fast`、`onespec-design`、`onespec-execute`、`onespec-archive`
+7. 部署 OneSpec 内置 skills：`onespec` 和 `onespec-fast`
 8. 在项目级安装时创建 `docs/superpowers/specs/` 和 `docs/superpowers/plans/` 工作目录
 
 常用非交互示例：
@@ -90,11 +90,11 @@ onespec doctor . --scope project
 使用 onespec-fast：添加一个低复杂度校验提示
 ```
 
-路由 skill 会根据意图切到对应阶段：
+路由 skill 会根据意图读取对应 reference 模块：
 
-- 新需求、proposal、范围定义：`onespec-design`
-- 开始实现或继续实现：`onespec-execute`
-- 评审、收尾、删除 worktree、归档：`onespec-archive`
+- 新需求、proposal、范围定义：`onespec/references/design.md`
+- 开始实现或继续实现：`onespec/references/execute.md`
+- 评审、收尾、删除 worktree、归档：`onespec/references/archive.md`
 - 明确要求低复杂度快速路径，自动 proposal、原生 apply 和归档：`onespec-fast`
 
 对于未被 `onespec init` / `onespec doctor` 官方接管的 agent，如果它支持 `SKILL.md`，也可以手动复制技能包到对应目录；只是当前 CLI 不会替你做环境校验，也不会替你自动安装到这些未接管平台。
@@ -113,23 +113,23 @@ openspec/changes/<change-id>/.onespec.yaml
 
 ### 2. 设计阶段
 
-`onespec-design` 负责需求澄清、歧义扫描、生成 `proposal.md`、`design.md`、`tasks.md` 和 spec delta。产物完成后，它还会给出后续应该走 Superpowers 还是直接 `OpenSpec apply` 的建议。
+`onespec/references/design.md` 负责需求澄清、歧义扫描、生成 `proposal.md`、`design.md`、`tasks.md` 和 spec delta。产物完成后，它还会给出后续应该走 Superpowers 还是直接 `OpenSpec apply` 的建议。
 
 ### 3. 执行阶段
 
-`onespec-execute` 只在已批准的 OpenSpec 范围内工作。它会恢复或生成可执行的实现计划，推进实现，并把任务状态和文件状态同步回 OpenSpec。
+`onespec/references/execute.md` 只在已批准的 OpenSpec 范围内工作。它会恢复或生成可执行的实现计划，推进实现，并把任务状态和文件状态同步回 OpenSpec。
 
 ### 4. 评审与归档阶段
 
-`onespec-archive` 负责最终评审、处理反馈、清理 worktree 和执行归档。有后果的收尾动作都需要用户明确确认。
+`onespec/references/archive.md` 负责最终评审、处理反馈、清理 worktree 和执行归档。有后果的收尾动作都需要用户明确确认。
 
 ### 5. 快速路径
 
-`onespec-fast` 会直接创建 OpenSpec proposal 并执行强制复杂度检查。低复杂度 change 会跳过 proposal 确认，使用原生 OpenSpec apply，并自动归档；中复杂度或高复杂度会回退到常规批准 gate。
+`onespec-fast` 是一个很薄的独立入口，复用 `onespec/references/fast.md`。它会直接创建 OpenSpec proposal 并执行强制复杂度检查。低复杂度 change 会跳过 proposal 确认，使用原生 OpenSpec apply，并自动归档；中复杂度或高复杂度会回退到常规批准 gate。
 
 ## 核心功能点
 
-- 内置工作流技能包：路由、快速路径、设计、执行、归档五个 skill 一起安装。
+- 内置工作流技能包：安装 `onespec` 路由和 `onespec-fast` 入口；设计、执行、归档和快速路径规则位于 `onespec/references/`。
 - 项目目录初始化：项目级安装会创建 `docs/superpowers/specs` 和 `docs/superpowers/plans`。
 - 环境自检：`onespec doctor` 会检查 Codex / Claude Code / Cursor / Gemini CLI / GitHub Copilot 下的 OneSpec skill、OpenSpec CLI / 项目初始化状态，以及必需的 Superpowers skill。
 - 中英文切换：`onespec init` 支持 `--language zh|en`。

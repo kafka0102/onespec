@@ -2,7 +2,7 @@
 
 > 中文说明见 [README-zh.md](README-zh.md)
 
-OneSpec is an agent skill bundle and CLI for running an OpenSpec + Superpowers workflow. It installs the bundled `onespec`, `onespec-fast`, `onespec-design`, `onespec-execute`, and `onespec-archive` skills, then uses them to move an AI coding task through design, execution, and archive.
+OneSpec is an agent skill bundle and CLI for running an OpenSpec + Superpowers workflow. It installs the bundled `onespec` and `onespec-fast` skills, then uses `onespec/references/` phase modules to move an AI coding task through design, execution, and archive.
 
 Official platform support today:
 
@@ -52,7 +52,7 @@ onespec init
 4. Automatically install OpenSpec CLI when needed
 5. Automatically initialize OpenSpec for the selected platforms
 6. Automatically install Superpowers skills for the selected platforms
-7. Deploy the bundled OneSpec skills: `onespec`, `onespec-fast`, `onespec-design`, `onespec-execute`, `onespec-archive`
+7. Deploy the bundled OneSpec skills: `onespec` and `onespec-fast`
 8. Create `docs/superpowers/specs/` and `docs/superpowers/plans/` for project installs
 
 Common non-interactive examples:
@@ -90,11 +90,11 @@ use onespec: review and archive the login audit change
 use onespec-fast: add a low-complexity validation message
 ```
 
-The router skill chooses the next phase by intent:
+The router skill chooses the next phase by intent and reads only the matching reference module:
 
-- New requirement, proposal, or scope definition: `onespec-design`
-- Start or continue implementation: `onespec-execute`
-- Review, closeout, worktree deletion, or archive: `onespec-archive`
+- New requirement, proposal, or scope definition: `onespec/references/design.md`
+- Start or continue implementation: `onespec/references/execute.md`
+- Review, closeout, worktree deletion, or archive: `onespec/references/archive.md`
 - Explicit low-complexity fast path with automatic proposal, native apply, and archive: `onespec-fast`
 
 For non-supported agents, you can still copy the bundled skills manually into that agent's skill directory if it supports `SKILL.md`, but `onespec doctor` will not validate that environment yet.
@@ -113,23 +113,23 @@ That file keeps phase, handoff data, and touched-file tracking until the change 
 
 ### 2. Design phase
 
-`onespec-design` handles requirement clarification, ambiguity scan, `proposal.md`, `design.md`, `tasks.md`, and spec delta generation. After the artifacts are ready, it recommends whether execution should use Superpowers or direct OpenSpec apply.
+`onespec/references/design.md` handles requirement clarification, ambiguity scan, `proposal.md`, `design.md`, `tasks.md`, and spec delta generation. After the artifacts are ready, it recommends whether execution should use Superpowers or direct OpenSpec apply.
 
 ### 3. Execute phase
 
-`onespec-execute` only works from approved OpenSpec scope. It restores or creates an executable implementation plan, carries out the work, and syncs task and file state back into OpenSpec.
+`onespec/references/execute.md` only works from approved OpenSpec scope. It restores or creates an executable implementation plan, carries out the work, and syncs task and file state back into OpenSpec.
 
 ### 4. Review and archive phase
 
-`onespec-archive` handles final review, feedback follow-up, worktree cleanup, and archive. Destructive closeout actions are gated behind explicit user confirmation.
+`onespec/references/archive.md` handles final review, feedback follow-up, worktree cleanup, and archive. Destructive closeout actions are gated behind explicit user confirmation.
 
 ### 5. Fast path
 
-`onespec-fast` directly creates the OpenSpec proposal and runs a mandatory complexity check. Low-complexity changes skip proposal confirmation, use native OpenSpec apply, and archive automatically; medium or high complexity changes fall back to the regular approval gate.
+`onespec-fast` is a thin standalone entrypoint that reuses `onespec/references/fast.md`. It directly creates the OpenSpec proposal and runs a mandatory complexity check. Low-complexity changes skip proposal confirmation, use native OpenSpec apply, and archive automatically; medium or high complexity changes fall back to the regular approval gate.
 
 ## Core Capabilities
 
-- Bundled workflow skills: router, fast path, design, execute, and archive are installed together.
+- Bundled workflow skills: `onespec` router and `onespec-fast` entrypoint are installed together; design, execute, archive, and fast rules live under `onespec/references/`.
 - Project scaffolding: project installs create `docs/superpowers/specs` and `docs/superpowers/plans`.
 - Environment checks: `onespec doctor` reports missing OneSpec skills, OpenSpec CLI/project setup, and required Superpowers skills for Codex, Claude Code, Cursor, Gemini CLI, and GitHub Copilot.
 - Localized skill bundle: `onespec init` supports `--language zh|en`.

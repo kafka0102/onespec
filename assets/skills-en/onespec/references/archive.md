@@ -1,15 +1,6 @@
----
-name: onespec-archive
-description: Use when the user needs final review, feedback handling, worktree deletion, or OpenSpec archive for a OneSpec change.
----
+# Archive Phase
 
-# OneSpec Archive
-
-Handles the review, closeout, and archive phase for OneSpec. The goal is to resolve the code fate of temporary worktrees and complete merge, discard, or archive actions according to the user's explicit closeout selection.
-
-Announce at the start:
-
-> I am using `onespec-archive` for the review / closeout phase.
+Read on demand from `onespec` during the `review-closeout` phase. The goal is to resolve the code fate of temporary worktrees and complete merge, discard, or archive actions according to the user's explicit closeout selection.
 
 ## 1. Review Entry
 
@@ -27,7 +18,7 @@ If a relevant change exists, you must continue with:
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding whether to continue closeout-phase work.
+Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_reference`, `next_gate`, and `allowed_actions` before deciding whether to continue closeout-phase work.
 
 Read the minimum necessary context:
 
@@ -49,9 +40,9 @@ Let the user review the implementation. If they raise issues, continue editing a
 
 After implementation is done, do not require another explicit review-confirmation step and do not show a generic "continue review / preserve branch" menu. First decide what happens to the temporary worktree code. If the user replies with any non-numbered content, treat that as a request to keep modifying the implementation and return directly to code work.
 
-Do not make the user guess what to type next. If the user enters `onespec-archive` without having made a closeout choice yet, provide a numbered menu.
+Do not make the user guess what to type next. If the user enters archive phase without having made a closeout choice yet, provide a numbered menu.
 
-If the user arrived from the `onespec-execute` completion report and already replied with a closeout number there, treat that earlier reply as the only required authorization. Do not show the same menu again and do not add an intermediate "should I handle merge/archive?" confirmation. At that point, only report the required state checks and execute the selected actions directly without splitting closeout into a second confirmation round.
+If the user arrived from the execute phase completion report and already replied with a closeout number there, treat that earlier reply as the only required authorization. Do not show the same menu again and do not add an intermediate "should I handle merge/archive?" confirmation. At that point, only report the required state checks and execute the selected actions directly without splitting closeout into a second confirmation round.
 
 Before offering closeout choices, explicitly tell the user:
 
@@ -108,7 +99,7 @@ Menu interpretation:
 
 If the current workspace is not a temporary worktree and the code is already truly on the target branch, `archive-only` is allowed.
 
-If the user already selected a closeout number in the `onespec-execute` completion menu, do not repeat the same menu here; combine that reply with the actual workspace state and execute the matching action directly.
+If the user already selected a closeout number in the execute phase completion menu, do not repeat the same menu here; combine that reply with the actual workspace state and execute the matching action directly.
 
 ## 3. Archive Rules
 

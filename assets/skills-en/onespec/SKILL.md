@@ -1,11 +1,11 @@
 ---
 name: onespec
-description: Use when the user wants to manage the full AI coding change lifecycle with OpenSpec and Superpowers, or is unsure whether they should be in design, execution, or archive.
+description: Use when the user wants to manage the full AI coding change lifecycle with OpenSpec and Superpowers, or is unsure whether they should be in design, execution, archive, or the fast path.
 ---
 
 # OneSpec Workflow
 
-OneSpec is a routing skill. It restores state, determines the current phase, and hands off to `onespec-design`, `onespec-execute`, or `onespec-archive`. Phase-specific rules live in the child skills.
+OneSpec is a single-entry workflow skill. Restore state, determine the current phase, then read the matching module under `references/`; do not call deprecated phase child skills.
 
 Announce at the start:
 
@@ -28,23 +28,32 @@ If a relevant change exists, run:
 ```
 
 Runtime state lives in `openspec/changes/<change-id>/.onespec.yaml`. Handoff summary, hashes, and touched-file tracking all live there; keep it until archive, then delete it during archive cleanup.
-Treat `recover` output as the execution contract, not as a hint. Read at least `phase`, `next_skill`, `next_gate`, and `allowed_actions` before deciding what to do next.
+Treat `recover` output as the execution contract, not as a hint. Read at least `phase`, `next_skill`, `next_reference`, `next_gate`, and `allowed_actions` before deciding what to do next.
 
 ## Phase Routing
 
 Classify the current request first:
 
-- `propose`: define a new change, clarify scope, generate `proposal.md`, `design.md`, `tasks.md`, and spec deltas. Use `onespec-design`.
-- `apply`: implement an approved change, continue an existing change, generate or resume a Superpowers plan, and sync OpenSpec state. Use `onespec-execute`.
-- `review-closeout`: user review, feedback handling, worktree deletion, or archive. Use `onespec-archive`.
+- `propose`: define a new change, clarify scope, generate `proposal.md`, `design.md`, `tasks.md`, and spec deltas. Read `references/design.md`.
+- `apply`: implement an approved change, continue an existing change, generate or resume a Superpowers plan, and sync OpenSpec state. Read `references/execute.md`.
+- `review-closeout`: user review, feedback handling, worktree deletion, or archive. Read `references/archive.md`.
+- `fast`: the user explicitly asks for `onespec-fast`, the fast path, fast apply, or automatic low-complexity execution. Read `references/fast.md`; the standalone `onespec-fast` entrypoint also routes to this same reference.
 
 If intent is unclear, ask one short question only.
 
 Default intent mapping:
 
-- Requests like "new requirement", "design this", "write a proposal/spec", or "define a change" go to `onespec-design`.
-- Requests like "start implementation", "execute this change", "apply this proposal/change", "continue this change", "start coding/development", or "make plan" go to `onespec-execute`. If the proposal is not approved yet, `onespec-execute` must stop and send the flow back to the approval gate in `onespec-design`.
-- Requests like "review", "close out", "archive", or "delete the worktree" go to `onespec-archive`.
+- Requests like "new requirement", "design this", "write a proposal/spec", or "define a change" read `references/design.md`.
+- Requests like "start implementation", "execute this change", "apply this proposal/change", "continue this change", "start coding/development", or "make plan" read `references/execute.md`. If the proposal is not approved yet, stop and send the flow back to the approval gate in `references/design.md`.
+- Requests like "review", "close out", "archive", or "delete the worktree" read `references/archive.md`.
+- Requests like "onespec-fast", "fast path", "fast apply", or "automatic low-complexity execution" read `references/fast.md`.
+
+## Reference Loading
+
+- Read only the one reference needed for the current phase; do not preload other phases.
+- If `recover` returns `next_reference`, read it by default. Override it only when the user explicitly changes phase and the previous phase gate is already complete.
+- `references/fast.md` may reuse procedure sections from `design.md`, `execute.md`, and `archive.md`, but the fast path overrides the normal proposal approval, review pause, and closeout-menu gates.
+- For cross-phase checks, read only the smallest section directly required by the gate.
 
 ## Shared Constraints
 
@@ -53,5 +62,5 @@ Default intent mapping:
 - Do not ask the user to name the change. Generate a short kebab-case `change-id` from the task and append a suffix if needed.
 - Read the minimum necessary context: `openspec/config.yaml`, `openspec/project.md`, relevant `openspec/specs/**`, project entry docs, and current branch/worktree state.
 - Only ask questions that can change the proposal, execution path, branch handling, or archive result.
-- If shared and phase-specific rules conflict, the child skill for the current phase wins.
-- If `recover` already points to a `next_skill`, resume there by default. Only override it when the user explicitly changes phase and the previous phase gate is already complete.
+- If shared and phase-specific rules conflict, the current phase reference wins.
+- Each phase reference defines mandatory pause gates, such as the approval gate in `references/design.md` and the implementation-complete gate in `references/execute.md`. Before routing to the next phase, confirm the previous gate is complete; if it is not, refuse to continue and name the missing gate.

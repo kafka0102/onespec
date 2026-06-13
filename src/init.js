@@ -10,9 +10,19 @@ const __dirname = path.dirname(__filename);
 export const BUNDLED_ONESPEC_SKILLS = [
   'onespec',
   'onespec-fast',
+];
+
+export const LEGACY_ONESPEC_CHILD_SKILLS = [
   'onespec-design',
   'onespec-execute',
   'onespec-archive',
+];
+
+export const BUNDLED_ONESPEC_REFERENCE_FILES = [
+  'references/design.md',
+  'references/execute.md',
+  'references/archive.md',
+  'references/fast.md',
 ];
 
 export const SUPPORTED_LANGUAGES = {
@@ -90,6 +100,12 @@ export async function initProject(projectPath, options = {}) {
 
   await mkdir(skillsDir, { recursive: true });
 
+  if (overwrite) {
+    for (const skillName of LEGACY_ONESPEC_CHILD_SKILLS) {
+      await rm(path.join(skillsDir, skillName), { recursive: true, force: true });
+    }
+  }
+
   for (const skillName of BUNDLED_ONESPEC_SKILLS) {
     const source = path.join(sourceRoot, skillName);
     const target = path.join(skillsDir, skillName);
@@ -105,9 +121,9 @@ export async function initProject(projectPath, options = {}) {
     }
     await cp(source, target, { recursive: true });
     if (language !== 'zh') {
-      const localizedSkill = path.join(localizedRoot, skillName, 'SKILL.md');
+      const localizedSkill = path.join(localizedRoot, skillName);
       if (await exists(localizedSkill)) {
-        await cp(localizedSkill, path.join(target, 'SKILL.md'));
+        await cp(localizedSkill, target, { recursive: true, force: true });
       }
     }
     await makeBundledScriptsExecutable(target);

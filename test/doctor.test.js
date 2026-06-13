@@ -8,13 +8,7 @@ import { doctorProject } from '../src/doctor.js';
 import { initProject } from '../src/init.js';
 import { getProjectSkillDir } from '../src/platforms.js';
 
-const BUNDLED_ONESPEC = [
-  'onespec',
-  'onespec-fast',
-  'onespec-design',
-  'onespec-execute',
-  'onespec-archive',
-];
+const BUNDLED_ONESPEC = ['onespec', 'onespec-fast'];
 
 async function tmpProject() {
   return mkdtemp(path.join(os.tmpdir(), 'onespec-doctor-'));
@@ -78,6 +72,7 @@ test('doctorProject passes when OneSpec and required Superpowers skills are inst
   assert.equal(report.onespec.language, 'zh');
   assert.deepEqual(report.onespec.installedSkills, BUNDLED_ONESPEC);
   assert.deepEqual(report.onespec.missingSkills, []);
+  assert.deepEqual(report.onespec.missingFiles, []);
   assert.equal(report.openspecCli.available, true);
   assert.equal(report.hasOpenSpecProject, false);
   assert.equal(report.superpowers.available, true);
@@ -87,7 +82,7 @@ test('doctorProject passes when OneSpec and required Superpowers skills are inst
   ]);
 });
 
-test('doctorProject reports missing bundled OneSpec child skills', async () => {
+test('doctorProject reports missing bundled OneSpec fast entrypoint and references', async () => {
   const projectPath = await tmpProject();
   await addSkill(projectPath, 'codex', 'onespec');
 
@@ -100,11 +95,12 @@ test('doctorProject reports missing bundled OneSpec child skills', async () => {
 
   assert.equal(report.onespec.installed, false);
   assert.deepEqual(report.onespec.installedSkills, ['onespec']);
-  assert.deepEqual(report.onespec.missingSkills, [
-    'onespec-fast',
-    'onespec-design',
-    'onespec-execute',
-    'onespec-archive',
+  assert.deepEqual(report.onespec.missingSkills, ['onespec-fast']);
+  assert.deepEqual(report.onespec.missingFiles, [
+    path.join('onespec', 'references/design.md'),
+    path.join('onespec', 'references/execute.md'),
+    path.join('onespec', 'references/archive.md'),
+    path.join('onespec', 'references/fast.md'),
   ]);
   assert.match(report.nextSteps.join('\n'), /onespec init --platform codex --overwrite/);
 });

@@ -1,15 +1,6 @@
----
-name: onespec-archive
-description: 当用户需要对 OneSpec change 做最终评审、处理反馈、删除 worktree 或执行 OpenSpec archive 时使用。
----
+# Archive Phase
 
-# OneSpec Archive
-
-用于 OneSpec 的评审、收尾与归档阶段。目标是在用户确认后处理临时 worktree 的代码去向，并按用户已授权的动作完成合并、废弃或归档。
-
-开始时说明：
-
-> 我正在使用 `onespec-archive` 处理 review / closeout 阶段。
+供 `onespec` 在 `review-closeout` 阶段按需读取。目标是在用户确认后处理临时 worktree 的代码去向，并按用户已授权的动作完成合并、废弃或归档。
 
 ## 1. 评审入口
 
@@ -27,7 +18,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，再决定是否继续收尾阶段动作。
+`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_reference`、`next_gate` 与 `allowed_actions`，再决定是否继续收尾阶段动作。
 
 读取最少必要上下文：
 
@@ -49,9 +40,9 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 开发完成后不需要再次让用户确认是否 review，也不需要展示常规“继续评审 / 保留分支”类选项。收尾应先处理临时 worktree 中的代码去向；如果用户回复任意非编号内容，默认视为“继续修改当前实现”，直接回到代码处理环节。
 
-不要让用户自己猜“下一步该输入什么”。如果用户是直接进入 `onespec-archive`，尚未做收尾选择，则必须给出可直接回复的编号选项。
+不要让用户自己猜“下一步该输入什么”。如果用户是直接进入 archive phase，尚未做收尾选择，则必须给出可直接回复的编号选项。
 
-如果用户是从 `onespec-execute` 的完成汇报进入这里，并且已经回复了收尾编号，则把那次回复视为唯一有效授权，不得再次展示一轮相同菜单，也不得再追加“是否处理合并/归档”之类的中间确认。此时只需汇报必要状态检查，并按用户已选动作直接执行，不需要拆成两轮确认。
+如果用户是从 execute phase 的完成汇报进入这里，并且已经回复了收尾编号，则把那次回复视为唯一有效授权，不得再次展示一轮相同菜单，也不得再追加“是否处理合并/归档”之类的中间确认。此时只需汇报必要状态检查，并按用户已选动作直接执行，不需要拆成两轮确认。
 
 进入收尾选择前，必须显式向用户汇报：
 
@@ -108,7 +99,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 如果当前不是临时 worktree，且代码已经真正位于目标分支，也允许执行 `archive-only`。
 
-如果用户之前已经在 `onespec-execute` 的完成菜单里选了收尾编号，则这里不再重复相同菜单，而是结合实际工作区状态直接执行对应动作。
+如果用户之前已经在 execute phase 的完成菜单里选了收尾编号，则这里不再重复相同菜单，而是结合实际工作区状态直接执行对应动作。
 
 ## 3. 归档规则
 

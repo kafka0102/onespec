@@ -1,15 +1,6 @@
----
-name: onespec-execute
-description: 当用户需要执行已批准 OpenSpec change、继续实现、生成 Superpowers plan、运行 OpenSpec apply、回填 tasks 或验证实现时使用。
----
+# Execute Phase
 
-# OneSpec Execute
-
-用于 OneSpec 的执行阶段。目标是只在已批准范围内实现，并把实现结果回填 OpenSpec 状态。
-
-开始时说明：
-
-> 我正在使用 `onespec-execute` 处理 apply / implement 阶段。
+供 `onespec` 在 `apply` 阶段按需读取。目标是只在已批准范围内实现，并把实现结果回填 OpenSpec 状态。
 
 ## 1. Apply 路由
 
@@ -27,7 +18,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 "$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>
 ```
 
-`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_gate` 与 `allowed_actions`，再决定是否继续执行阶段动作。
+`recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_reference`、`next_gate` 与 `allowed_actions`，再决定是否继续执行阶段动作。
 
 apply 前至少读取：
 
@@ -211,11 +202,11 @@ apply 前至少读取：
 
 如果当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree；若你直接回复非编号内容，我会按继续修改处理。"
 
-- 选择 `1` 时，`onespec-archive` 必须按“先归档，再合并分支到 base 分支”的固定顺序执行。
-- 选择 `2` 时，`onespec-archive` 只做归档，不合并分支，也不自动删除当前 worktree。
-- 选择 `3` 时，`onespec-archive` 删除当前临时 worktree 并废弃代码，不执行归档。
+- 选择 `1` 时，archive phase 必须按“先归档，再合并分支到 base 分支”的固定顺序执行。
+- 选择 `2` 时，archive phase 只做归档，不合并分支，也不自动删除当前 worktree。
+- 选择 `3` 时，archive phase 删除当前临时 worktree 并废弃代码，不执行归档。
 
-不要只停在“下一步应进入 `onespec-archive`”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户可直接回复的编号选项。
+不要只停在“下一步应进入 archive phase”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户可直接回复的编号选项。
 
 ### 5.4 反模式（NEVER）
 
@@ -225,6 +216,6 @@ apply 前至少读取：
 - 汇报中缺少当前分支/工作区信息（checklist 第 1-3 项）
 - 未给出明确的下一步编号选项
 - 在用户尚未选择前，直接执行 archive / merge / worktree 删除操作
-- 在用户未回复前自行进入 `onespec-archive` 阶段
-- 用"下一步应进入 onespec-archive"这种抽象描述替代具体编号菜单
+- 在用户未回复前自行进入 archive phase 阶段
+- 用"下一步应进入 archive phase"这种抽象描述替代具体编号菜单
 - 在用户完成 review 并明确要求收尾前，擅自删除临时 worktree
