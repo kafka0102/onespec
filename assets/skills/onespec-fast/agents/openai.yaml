@@ -1,0 +1,4 @@
+interface:
+  display_name: "OneSpec Fast"
+  short_description: "Run low-complexity OneSpec changes end to end"
+  default_prompt: "Use $onespec-fast to implement and archive a low-complexity OpenSpec change."

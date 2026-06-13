@@ -2,7 +2,7 @@
 
 > English version: [README.md](README.md)
 
-OneSpec 是一个面向 agent 的 skill bundle 和 CLI，用来执行 OpenSpec + Superpowers 工作流。它会安装 `onespec`、`onespec-design`、`onespec-execute`、`onespec-archive` 四个内置 skill，并把 AI Coding 任务路由到设计、执行和归档阶段。
+OneSpec 是一个面向 agent 的 skill bundle 和 CLI，用来执行 OpenSpec + Superpowers 工作流。它会安装 `onespec`、`onespec-fast`、`onespec-design`、`onespec-execute`、`onespec-archive` 五个内置 skill，并把 AI Coding 任务路由到设计、执行和归档阶段。
 
 当前官方支持的平台：
 
@@ -17,6 +17,7 @@ OneSpec 是一个面向 agent 的 skill bundle 和 CLI，用来执行 OpenSpec +
 ## 这个 Skill 是做什么的
 
 - 把用户请求路由到正确的工作流阶段。
+- 提供 `onespec-fast`，用于低复杂度 change 直接从 proposal 进入原生 OpenSpec apply 并自动归档。
 - 用 OpenSpec 作为范围、审批、规格和归档语义的事实来源。
 - 用 Superpowers 处理高歧义需求澄清、实现计划、TDD 和工程执行约束。
 - 在归档前，把每个 change 的运行时状态保存在 `openspec/changes/<change-id>/.onespec.yaml`。
@@ -51,7 +52,7 @@ onespec init
 4. 自动补齐 OpenSpec CLI
 5. 自动为所选平台初始化 OpenSpec
 6. 自动为所选平台安装 Superpowers skills
-7. 部署 OneSpec 内置 skills：`onespec`、`onespec-design`、`onespec-execute`、`onespec-archive`
+7. 部署 OneSpec 内置 skills：`onespec`、`onespec-fast`、`onespec-design`、`onespec-execute`、`onespec-archive`
 8. 在项目级安装时创建 `docs/superpowers/specs/` 和 `docs/superpowers/plans/` 工作目录
 
 常用非交互示例：
@@ -86,6 +87,7 @@ onespec doctor . --scope project
 使用 onespec：设计一个登录审计功能
 使用 onespec：执行已批准的登录审计 change
 使用 onespec：评审并归档登录审计 change
+使用 onespec-fast：添加一个低复杂度校验提示
 ```
 
 路由 skill 会根据意图切到对应阶段：
@@ -93,6 +95,7 @@ onespec doctor . --scope project
 - 新需求、proposal、范围定义：`onespec-design`
 - 开始实现或继续实现：`onespec-execute`
 - 评审、收尾、删除 worktree、归档：`onespec-archive`
+- 明确要求低复杂度快速路径，自动 proposal、原生 apply 和归档：`onespec-fast`
 
 对于未被 `onespec init` / `onespec doctor` 官方接管的 agent，如果它支持 `SKILL.md`，也可以手动复制技能包到对应目录；只是当前 CLI 不会替你做环境校验，也不会替你自动安装到这些未接管平台。
 
@@ -120,9 +123,13 @@ openspec/changes/<change-id>/.onespec.yaml
 
 `onespec-archive` 负责最终评审、处理反馈、清理 worktree 和执行归档。有后果的收尾动作都需要用户明确确认。
 
+### 5. 快速路径
+
+`onespec-fast` 会直接创建 OpenSpec proposal 并执行强制复杂度检查。低复杂度 change 会跳过 proposal 确认，使用原生 OpenSpec apply，并自动归档；中复杂度或高复杂度会回退到常规批准 gate。
+
 ## 核心功能点
 
-- 内置工作流技能包：路由、设计、执行、归档四个 skill 一起安装。
+- 内置工作流技能包：路由、快速路径、设计、执行、归档五个 skill 一起安装。
 - 项目目录初始化：项目级安装会创建 `docs/superpowers/specs` 和 `docs/superpowers/plans`。
 - 环境自检：`onespec doctor` 会检查 Codex / Claude Code / Cursor / Gemini CLI / GitHub Copilot 下的 OneSpec skill、OpenSpec CLI / 项目初始化状态，以及必需的 Superpowers skill。
 - 中英文切换：`onespec init` 支持 `--language zh|en`。

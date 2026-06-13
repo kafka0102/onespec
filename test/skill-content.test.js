@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { test } from 'node:test';
 
-const BUNDLED_SKILLS = ['onespec', 'onespec-design', 'onespec-execute', 'onespec-archive'];
+const BUNDLED_SKILLS = [
+  'onespec',
+  'onespec-fast',
+  'onespec-design',
+  'onespec-execute',
+  'onespec-archive',
+];
 
 async function readSkill(name) {
   return readFile(`assets/skills/${name}/SKILL.md`, 'utf8');
@@ -16,12 +22,33 @@ function expectIncludes(content, expected) {
   assert.match(content, new RegExp(expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 }
 
-test('OneSpec bundle exposes router plus design, execute, and archive skills', async () => {
+test('OneSpec bundle exposes router, fast, design, execute, and archive skills', async () => {
   const skills = await readdir('assets/skills');
 
   for (const skillName of BUNDLED_SKILLS) {
     assert.ok(skills.includes(skillName), `${skillName} should exist`);
     expectIncludes(await readSkill(skillName), `name: ${skillName}`);
+  }
+});
+
+test('onespec-fast documents direct proposal, complexity check, native apply, and archive', async () => {
+  const skill = await readSkill('onespec-fast');
+
+  for (const expected of [
+    'OneSpec Fast',
+    '直接 Proposal',
+    '强制复杂度检查',
+    '低复杂度自动开发与归档',
+    '不展示 `onespec-archive` 的收尾菜单',
+    'Proposal 批准 Gate',
+    'implementation_path openspec-apply',
+    'execution_method native',
+    'phase implementing',
+    'openspec validate <change-id> --strict',
+    'run-actions <change-id> archive-only',
+    '中高复杂度回退',
+  ]) {
+    expectIncludes(skill, expected);
   }
 });
 
@@ -168,6 +195,7 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   }
 
   expectIncludes(await readEnglishSkill('onespec'), '# OneSpec Workflow');
+  expectIncludes(await readEnglishSkill('onespec-fast'), '# OneSpec Fast');
   expectIncludes(await readEnglishSkill('onespec-design'), '# OneSpec Design');
   expectIncludes(await readEnglishSkill('onespec-execute'), '# OneSpec Execute');
   expectIncludes(await readEnglishSkill('onespec-archive'), '# OneSpec Archive');
@@ -216,6 +244,8 @@ test('English skill overlays exist for the full OneSpec bundle', async () => {
   expectIncludes(await readEnglishSkill('onespec-archive'), 'run `archive-then-merge-worktree`');
   expectIncludes(await readEnglishSkill('onespec-archive'), 'temporary zip files, export bundles');
   expectIncludes(await readEnglishSkill('onespec-design'), 'extensible module');
+  expectIncludes(await readEnglishSkill('onespec-fast'), 'Mandatory Complexity Check');
+  expectIncludes(await readEnglishSkill('onespec-fast'), 'run-actions <change-id> archive-only');
   assert.doesNotMatch(
     await readEnglishSkill('onespec-archive'),
     /require one more explicit archive command/i

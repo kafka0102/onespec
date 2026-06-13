@@ -20,7 +20,13 @@ async function tmpProject() {
   return mkdtemp(path.join(os.tmpdir(), 'onespec-init-'));
 }
 
-const BUNDLED_SKILLS = ['onespec', 'onespec-design', 'onespec-execute', 'onespec-archive'];
+const BUNDLED_SKILLS = [
+  'onespec',
+  'onespec-fast',
+  'onespec-design',
+  'onespec-execute',
+  'onespec-archive',
+];
 
 function projectSkillPath(projectPath, platform, ...parts) {
   return path.join(getProjectSkillDir(projectPath, platform), ...parts);
@@ -172,10 +178,15 @@ test('initProject installs missing bundled skills even when router already exist
   });
 
   assert.equal(result.installedSkill, true);
-  assert.deepEqual(result.installedSkills, ['onespec-design', 'onespec-execute', 'onespec-archive']);
+  assert.deepEqual(result.installedSkills, [
+    'onespec-fast',
+    'onespec-design',
+    'onespec-execute',
+    'onespec-archive',
+  ]);
   assert.deepEqual(result.skippedSkills, ['onespec']);
 
-  for (const skillName of ['onespec-design', 'onespec-execute', 'onespec-archive']) {
+  for (const skillName of ['onespec-fast', 'onespec-design', 'onespec-execute', 'onespec-archive']) {
     await stat(projectSkillPath(projectPath, 'codex', skillName, 'SKILL.md'));
   }
 });

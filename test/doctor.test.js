@@ -8,7 +8,13 @@ import { doctorProject } from '../src/doctor.js';
 import { initProject } from '../src/init.js';
 import { getProjectSkillDir } from '../src/platforms.js';
 
-const BUNDLED_ONESPEC = ['onespec', 'onespec-design', 'onespec-execute', 'onespec-archive'];
+const BUNDLED_ONESPEC = [
+  'onespec',
+  'onespec-fast',
+  'onespec-design',
+  'onespec-execute',
+  'onespec-archive',
+];
 
 async function tmpProject() {
   return mkdtemp(path.join(os.tmpdir(), 'onespec-doctor-'));
@@ -95,6 +101,7 @@ test('doctorProject reports missing bundled OneSpec child skills', async () => {
   assert.equal(report.onespec.installed, false);
   assert.deepEqual(report.onespec.installedSkills, ['onespec']);
   assert.deepEqual(report.onespec.missingSkills, [
+    'onespec-fast',
     'onespec-design',
     'onespec-execute',
     'onespec-archive',

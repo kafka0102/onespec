@@ -2,7 +2,7 @@
 
 > 中文说明见 [README-zh.md](README-zh.md)
 
-OneSpec is an agent skill bundle and CLI for running an OpenSpec + Superpowers workflow. It installs the bundled `onespec`, `onespec-design`, `onespec-execute`, and `onespec-archive` skills, then uses them to move an AI coding task through design, execution, and archive.
+OneSpec is an agent skill bundle and CLI for running an OpenSpec + Superpowers workflow. It installs the bundled `onespec`, `onespec-fast`, `onespec-design`, `onespec-execute`, and `onespec-archive` skills, then uses them to move an AI coding task through design, execution, and archive.
 
 Official platform support today:
 
@@ -17,6 +17,7 @@ The bundle itself is plain `SKILL.md` plus shell scripts, so it can be ported to
 ## What This Skill Does
 
 - Routes requests into the correct phase of the workflow.
+- Provides `onespec-fast` for low-complexity changes that should go directly from proposal to native OpenSpec apply and archive.
 - Uses OpenSpec as the source of truth for scope, approval gates, specs, and archive semantics.
 - Uses Superpowers for ambiguity handling, implementation planning, TDD, and execution discipline.
 - Persists per-change runtime state in `openspec/changes/<change-id>/.onespec.yaml` until archive.
@@ -51,7 +52,7 @@ onespec init
 4. Automatically install OpenSpec CLI when needed
 5. Automatically initialize OpenSpec for the selected platforms
 6. Automatically install Superpowers skills for the selected platforms
-7. Deploy the bundled OneSpec skills: `onespec`, `onespec-design`, `onespec-execute`, `onespec-archive`
+7. Deploy the bundled OneSpec skills: `onespec`, `onespec-fast`, `onespec-design`, `onespec-execute`, `onespec-archive`
 8. Create `docs/superpowers/specs/` and `docs/superpowers/plans/` for project installs
 
 Common non-interactive examples:
@@ -86,6 +87,7 @@ After `onespec init`, restart your agent session and invoke the workflow in natu
 use onespec: design a login audit feature
 use onespec: apply the approved change for login audit
 use onespec: review and archive the login audit change
+use onespec-fast: add a low-complexity validation message
 ```
 
 The router skill chooses the next phase by intent:
@@ -93,6 +95,7 @@ The router skill chooses the next phase by intent:
 - New requirement, proposal, or scope definition: `onespec-design`
 - Start or continue implementation: `onespec-execute`
 - Review, closeout, worktree deletion, or archive: `onespec-archive`
+- Explicit low-complexity fast path with automatic proposal, native apply, and archive: `onespec-fast`
 
 For non-supported agents, you can still copy the bundled skills manually into that agent's skill directory if it supports `SKILL.md`, but `onespec doctor` will not validate that environment yet.
 
@@ -120,9 +123,13 @@ That file keeps phase, handoff data, and touched-file tracking until the change 
 
 `onespec-archive` handles final review, feedback follow-up, worktree cleanup, and archive. Destructive closeout actions are gated behind explicit user confirmation.
 
+### 5. Fast path
+
+`onespec-fast` directly creates the OpenSpec proposal and runs a mandatory complexity check. Low-complexity changes skip proposal confirmation, use native OpenSpec apply, and archive automatically; medium or high complexity changes fall back to the regular approval gate.
+
 ## Core Capabilities
 
-- Bundled workflow skills: router, design, execute, and archive are installed together.
+- Bundled workflow skills: router, fast path, design, execute, and archive are installed together.
 - Project scaffolding: project installs create `docs/superpowers/specs` and `docs/superpowers/plans`.
 - Environment checks: `onespec doctor` reports missing OneSpec skills, OpenSpec CLI/project setup, and required Superpowers skills for Codex, Claude Code, Cursor, Gemini CLI, and GitHub Copilot.
 - Localized skill bundle: `onespec init` supports `--language zh|en`.

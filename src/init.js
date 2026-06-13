@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 
 export const BUNDLED_ONESPEC_SKILLS = [
   'onespec',
+  'onespec-fast',
   'onespec-design',
   'onespec-execute',
   'onespec-archive',
