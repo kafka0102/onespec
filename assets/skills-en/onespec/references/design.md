@@ -132,7 +132,10 @@ Always state:
 - change id and artifact locations
 - a short summary of the task artifact
 - complexity level and concrete reasons
-- recommended route: `recommend Superpowers` or `recommend direct OpenSpec apply`
+- the recommended combination, not only an abstract route:
+  - `OpenSpec apply + native + current branch`
+  - `Superpowers + subagent + new worktree`
+  - `Superpowers + subagent + current worktree/current branch`
 - that the user may override the recommendation
 
 ## 4. Proposal Approval Gate and Path Selection
@@ -141,9 +144,17 @@ Default intent mapping, issue-workflow routing, or implementation recommendation
 
 Implementation planning is only allowed after the user explicitly approves the proposal / design / spec. At the end of the design phase, do not fall back to a single free-form sentence, and do not require the user to type words like `approve`, `yes`, or `continue`. Present an "explicit options + recommendation + direct reply phrase" menu. The user may reply with digits or with the matching phrase. Silence, "looks okay", the original "start implementation", "execute this change", or "make plan" do not count as artifact approval.
 
-Use this default approval menu, with the recommended implementation path baked into item 1:
+Before rendering the approval menu, determine the recommended combination:
 
-1. approve the current proposal / design / spec and continue with the recommended implementation path (Recommended)
+- If recommending `OpenSpec apply`, the combination is fixed as `OpenSpec apply + native + current branch`; record `implementation_path=openspec-apply`, `execution_method=native`, and `workspace=current-branch` (if the current branch is `main`/`master` and project docs forbid direct main-branch changes, pause and warn first).
+- If recommending `Superpowers`, default the execution method to `subagent`; recommend `local` only when tasks are tightly coupled, unsuitable for per-task dispatch, or the user/platform clearly cannot use subagents.
+- Detect whether the current checkout is already an attached git worktree: compare `git rev-parse --path-format=absolute --git-dir` with `git rev-parse --path-format=absolute --git-common-dir`; if they differ, the current checkout is an attached worktree. If that command is unavailable, fall back to `git worktree list --porcelain` and match the current `pwd -P` against `worktree` entries.
+- If already inside an attached worktree, do not recommend creating another worktree; recommend `Superpowers + <subagent|local> + current worktree/current branch`, and record `workspace=current-branch` because execution happens in the current checkout.
+- If not inside an attached worktree and recommending `Superpowers`, default to `Superpowers + subagent + new worktree` for implementation-branch isolation; record `workspace=worktree`.
+
+Use this default approval menu, with the recommended combination baked into item 1. The menu must explain that the combination has three parts: implementation path + execution method + workspace policy.
+
+1. approve the current proposal / design / spec and continue with the recommended combination: `<recommended-combination>` (Recommended)
    Direct reply phrase: `approve and use the recommended path`
 2. approve the current proposal / design / spec, but change the implementation path, execution method, or workspace
    Direct reply phrase: `approve but change the implementation path`
@@ -155,40 +166,37 @@ Other: if the user's intent is not covered by the menu, allow free-form instruct
 
 Menu handling rules:
 
-- reply `1` or `approve and use the recommended path`: treat this as approval of the current artifacts and acceptance of the recommended path
-- reply `2` or `approve but change the implementation path`: treat this as approval of the current artifacts, but continue with another explicit-options menu for only the still-unconfirmed dimensions
+- reply `1` or `approve and use the recommended path`: treat this as approval of the current artifacts and acceptance of the recommended combination; do not ask a second round for `subagent/local` or `worktree/current-branch`; directly record the combination's `implementation_path`, `execution_method`, and `workspace`
+- reply `2` or `approve but change the implementation path`: treat this as approval of the current artifacts, but continue with a combination menu; do not split `subagent/local` and `worktree/current-branch` into two rounds
 - reply `3` or `revise the proposal first`: stay in design phase, revise artifacts based on feedback, and do not enter implementation
 - reply `4` or `stay in design for now`: pause at the design phase and wait for later instructions
 - free-form text instead of digits: if intent is clear, follow it; otherwise ask one minimal clarification question
 
-If the user chooses `Superpowers`, confirm two choices together:
+If the user picked item 2, keep using the same "explicit combination options + recommendation + direct reply phrase" format instead of only digits or only free-form words. Generate the menu based on whether the current checkout is already an attached worktree:
 
-- execution method: `subagent` or `local`. Recommend `subagent` by default, which maps to `subagent-driven-development`; `local` maps to `executing-plans`.
-- workspace: `worktree` or `current-branch`.
-
-If the user picked item 2, keep using the same "explicit options + recommendation + direct reply phrase" format instead of only digits or only free-form words. Recommended order:
-
-- implementation path:
-  1. `Superpowers` (Recommended)
-     Direct reply phrase: `use Superpowers`
-  2. `OpenSpec apply`
+- If not currently inside an attached worktree, use this default menu:
+  1. `Superpowers + subagent + new worktree` (Recommended)
+     Direct reply phrase: `use Superpowers subagent worktree`
+  2. `Superpowers + local + new worktree`
+     Direct reply phrase: `use Superpowers local worktree`
+  3. `Superpowers + local + current branch`
+     Direct reply phrase: `use Superpowers local current-branch`
+  4. `OpenSpec apply + native + current branch`
      Direct reply phrase: `use OpenSpec apply`
-- if `Superpowers` is selected, execution method:
-  1. `subagent` (Recommended)
-     Direct reply phrase: `use subagent`
-  2. `local`
-     Direct reply phrase: `use local`
-- workspace:
-  1. `worktree` (Recommended)
-     Direct reply phrase: `use worktree`
-  2. `current-branch`
-     Direct reply phrase: `use current-branch`
-  Other: allow the user to describe a special workspace arrangement
+  Other: allow a special combination, for example an explicit `Superpowers + subagent + current branch`
+- If already inside an attached worktree, use this default menu:
+  1. `Superpowers + subagent + current worktree/current branch` (Recommended)
+     Direct reply phrase: `use Superpowers subagent current worktree`
+  2. `Superpowers + local + current worktree/current branch`
+     Direct reply phrase: `use Superpowers local current worktree`
+  3. `OpenSpec apply + native + current worktree/current branch`
+     Direct reply phrase: `use OpenSpec apply`
+  Other: allow a special combination; do not recommend creating another worktree
 
 `main`/`master` rules:
 
 - Do not implement directly on `main`/`master` unless the user explicitly accepts the risk after being warned.
-- If the current branch is `main`/`master` and the user chooses `Superpowers`, do not auto-create a worktree from the branch name alone. Follow the chosen workspace policy. If `current-branch` is selected, warn and record `main-override`.
+- If the current branch is `main`/`master` and the user chooses `Superpowers + current branch`, warn first and record `main-override`; if the user chooses `new worktree`, follow the worktree creation rules.
 - If already on a feature branch and the workspace is clean, `current-branch` is acceptable.
 - If the plan is to switch into a `worktree` but the current workspace is dirty, handle those changes first before creating the worktree. In particular, do not create a temporary worktree while carrying uncommitted `main`/`master` changes.
 - For uncommitted changes on `main`/`master`, require a local commit that follows the project's commit policy before creating the temporary branch/worktree. Do not implicitly carry dirty base-branch code into a new implementation branch.

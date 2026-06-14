@@ -132,7 +132,10 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 - change id 与 artifact 位置
 - 对 task artifact 的简短摘要
 - 复杂度等级与具体原因
-- 推荐路线：`建议使用 Superpowers 实现` 或 `建议直接使用 OpenSpec apply`
+- 推荐组合，而不是只推荐抽象路线：
+  - `OpenSpec apply + native + current branch`
+  - `Superpowers + subagent + new worktree`
+  - `Superpowers + subagent + current worktree/current branch`
 - 用户可覆盖推荐
 
 ## 4. Proposal 批准 Gate 与路径选择
@@ -141,9 +144,17 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 
 只有用户明确批准 proposal / design / spec 后，才允许进入实现计划。设计阶段结束时，不要只给一句自由文本，也不要只要求用户输入 `批准`、`yes`、`continue` 等完整词；必须给出“显式选项 + 推荐项 + 可直接回复的口令”菜单。用户可以回复数字，也可以直接回复对应口令。沉默、“看起来还行”、最初的“开始实现”、“执行这个 change”或“make plan”都不算对 proposal 产物的批准。
 
-默认使用下面这组批准菜单，并把推荐路径写进第 1 项：
+生成批准菜单前先确定推荐组合：
 
-1. 批准当前 proposal / design / spec，并按推荐路径继续实现（推荐）
+- 如果推荐 `OpenSpec apply`，组合固定为 `OpenSpec apply + native + current branch`，记录 `implementation_path=openspec-apply`、`execution_method=native`、`workspace=current-branch`（如果当前是 `main`/`master` 且项目文档禁止直接修改主分支，先暂停提示风险）。
+- 如果推荐 `Superpowers`，默认执行方式是 `subagent`；只有 task 强耦合、不适合逐 task 派发，或用户/平台明确不能使用 subagent 时，才推荐 `local`。
+- 判断当前是否已经位于附加 git worktree：分别读取 `git rev-parse --path-format=absolute --git-dir` 与 `git rev-parse --path-format=absolute --git-common-dir`；两者不相同则当前就是附加 worktree。若命令不可用，可退回 `git worktree list --porcelain` 并用当前 `pwd -P` 匹配 `worktree` 条目。
+- 如果当前已经在附加 worktree 中，不推荐再创建新 worktree；推荐组合写成 `Superpowers + <subagent|local> + current worktree/current branch`，状态里记录 `workspace=current-branch`，因为执行位置就是当前 checkout。
+- 如果当前不在附加 worktree 中且推荐 `Superpowers`，默认推荐 `Superpowers + subagent + new worktree`，以便隔离实现分支；状态里记录 `workspace=worktree`。
+
+默认使用下面这组批准菜单，并把推荐组合写进第 1 项。菜单必须解释组合由三部分构成：实现路径 + 执行方式 + 工作区策略。
+
+1. 批准当前 proposal / design / spec，并按推荐组合继续实现：`<recommended-combination>`（推荐）
    可直接回复：`批准，按推荐路径继续`
 2. 批准当前 proposal / design / spec，但我要改实现路径、执行方式或工作区
    可直接回复：`批准，但我要改实现路径`
@@ -155,40 +166,37 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 
 菜单解释规则：
 
-- 用户回复 `1` 或 `批准，按推荐路径继续`：视为批准当前 artifacts，并接受当前推荐路径。
-- 用户回复 `2` 或 `批准，但我要改实现路径`：视为批准当前 artifacts，但要覆盖推荐路线；此时继续给出下一层显式选项，只询问仍未确认的维度。
+- 用户回复 `1` 或 `批准，按推荐路径继续`：视为批准当前 artifacts，并接受当前推荐组合；不要再二次询问 `subagent/local` 或 `worktree/current-branch`，直接记录该组合对应的 `implementation_path`、`execution_method` 与 `workspace`。
+- 用户回复 `2` 或 `批准，但我要改实现路径`：视为批准当前 artifacts，但要覆盖推荐组合；此时继续给出组合菜单，不要把 `subagent/local` 与 `worktree/current-branch` 拆成两轮问题。
 - 用户回复 `3` 或 `先修改 proposal`：继续留在 design phase，根据用户反馈修改 artifacts，不进入实现。
 - 用户回复 `4` 或 `先停在设计阶段`：暂停在设计阶段，等待用户后续指令。
 - 用户输入其他自由文本：如果意图清晰，按用户自定义意图处理；如果仍有歧义，只追问一个最短的澄清问题。
 
-如果用户选择 `Superpowers`，一次性确认两个选择：
+当用户选择第 2 项，后续确认也使用“显式组合选项 + 推荐项 + 可直接回复口令”菜单，不要只给数字或只给一句自由文本。根据当前是否已经在附加 worktree 中生成菜单：
 
-- 执行方式：`subagent` 或 `local`。默认推荐 `subagent`，对应 `subagent-driven-development`；`local` 对应当前 agent 使用 `executing-plans`。
-- 工作区：`worktree` 或 `current-branch`。
-
-当用户选择第 2 项，后续确认也改成“显式选项 + 推荐项 + 可直接回复口令”菜单，不要只给数字或只给一句自由文本。推荐顺序如下：
-
-- 实现路径：
-  1. `Superpowers`（推荐）
-     可直接回复：`使用 Superpowers`
-  2. `OpenSpec apply`
+- 如果当前不在附加 worktree 中，默认菜单：
+  1. `Superpowers + subagent + new worktree`（推荐）
+     可直接回复：`使用 Superpowers subagent worktree`
+  2. `Superpowers + local + new worktree`
+     可直接回复：`使用 Superpowers local worktree`
+  3. `Superpowers + local + current branch`
+     可直接回复：`使用 Superpowers local current-branch`
+  4. `OpenSpec apply + native + current branch`
      可直接回复：`使用 OpenSpec apply`
-- 如果选择 `Superpowers`，执行方式：
-  1. `subagent`（推荐）
-     可直接回复：`使用 subagent`
-  2. `local`
-     可直接回复：`使用 local`
-- 工作区：
-  1. `worktree`（推荐）
-     可直接回复：`使用 worktree`
-  2. `current-branch`
-     可直接回复：`使用 current-branch`
-  其他：允许用户补充说明特殊工作区安排
+  其他：允许用户补充说明特殊组合；例如明确要求 `Superpowers + subagent + current branch`
+- 如果当前已经在附加 worktree 中，默认菜单：
+  1. `Superpowers + subagent + current worktree/current branch`（推荐）
+     可直接回复：`使用 Superpowers subagent 当前 worktree`
+  2. `Superpowers + local + current worktree/current branch`
+     可直接回复：`使用 Superpowers local 当前 worktree`
+  3. `OpenSpec apply + native + current worktree/current branch`
+     可直接回复：`使用 OpenSpec apply`
+  其他：允许用户补充说明特殊组合；不要推荐再创建新的 worktree
 
 `main`/`master` 规则：
 
 - 不在 `main`/`master` 上直接实现，除非用户在看到风险提示后明确要求。
-- 如果当前在 `main`/`master` 且选择 `Superpowers`，不因分支名自动创建 worktree；按用户或项目默认工作区设置处理。若使用 `current-branch`，先提示风险并记录为 `main-override`。
+- 如果当前在 `main`/`master` 且选择 `Superpowers + current branch`，先提示风险并记录为 `main-override`；若选择 `new worktree`，按 worktree 创建规则处理。
 - 如果当前在功能分支且工作区干净，可以使用 `current-branch`。
 - 如果准备切到 `worktree`，但当前工作区存在未提交改动，必须先处理这些改动，再创建 worktree。尤其当前分支是 `main`/`master` 时，不允许带着未提交代码直接创建临时 worktree。
 - 对 `main`/`master` 上的未提交改动，默认要求先按项目提交规范创建本地 commit，再创建临时分支 / worktree；不要把未提交的 base 分支代码隐式带进新的实现分支。

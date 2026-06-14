@@ -105,7 +105,12 @@ test('design reference documents proposal and approval routing guardrails', asyn
     '只有用户明确批准 proposal / design / spec 后，才允许进入实现计划',
     '显式选项 + 推荐项 + 可直接回复的口令',
     '可直接回复：`批准，按推荐路径继续`',
-    '可直接回复：`使用 worktree`',
+    '推荐组合，而不是只推荐抽象路线',
+    'git rev-parse --path-format=absolute --git-dir',
+    '不要再二次询问 `subagent/local` 或 `worktree/current-branch`',
+    '`Superpowers + subagent + new worktree`',
+    '`Superpowers + subagent + current worktree/current branch`',
+    '不要推荐再创建新的 worktree',
     '`低复杂度`：默认推荐原生 `OpenSpec apply`',
     '默认要求先按项目提交规范创建本地 commit，再创建临时分支 / worktree',
   ]) {
@@ -131,6 +136,10 @@ test('execute reference documents apply, planning, and implementation guardrails
     '"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase implementing',
     'origin_branch',
     'origin_workspace_path',
+    '按推荐组合继续',
+    '当前已经在附加 worktree 中时',
+    '`Superpowers + subagent + current worktree/current branch`',
+    '不要再二次询问 `subagent/local` 或 `worktree/current-branch`',
     '默认要求先按项目提交规范创建本地 commit，再创建 worktree',
     '优先使用 `subagent-driven-development`',
     '强制遵守 `test-driven-development`',
@@ -247,10 +256,28 @@ test('English overlays exist for public skills and references', async () => {
     await readEnglishReference('design.md'),
     'Direct reply phrase: `approve and use the recommended path`',
   );
+  expectIncludes(await readEnglishReference('design.md'), 'the recommended combination');
+  expectIncludes(
+    await readEnglishReference('design.md'),
+    'git rev-parse --path-format=absolute --git-dir',
+  );
+  expectIncludes(
+    await readEnglishReference('design.md'),
+    'do not ask a second round for `subagent/local` or `worktree/current-branch`',
+  );
+  expectIncludes(
+    await readEnglishReference('design.md'),
+    '`Superpowers + subagent + current worktree/current branch`',
+  );
   expectIncludes(await readEnglishReference('execute.md'), 'phase implementing');
   expectIncludes(await readEnglishReference('execute.md'), 'Implementation-Complete Gate');
   expectIncludes(await readEnglishReference('execute.md'), 'Mandatory Script Calls');
   expectIncludes(await readEnglishReference('execute.md'), 'numbered next-step menu');
+  expectIncludes(await readEnglishReference('execute.md'), 'continue with the recommended combination');
+  expectIncludes(
+    await readEnglishReference('execute.md'),
+    'When already inside an attached worktree',
+  );
   expectIncludes(await readEnglishReference('execute.md'), 'Anti-Patterns');
   expectIncludes(
     await readEnglishReference('execute.md'),

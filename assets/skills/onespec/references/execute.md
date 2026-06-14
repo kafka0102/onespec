@@ -42,20 +42,36 @@ apply 前至少读取：
 - 用户确认原生 `OpenSpec apply`：切换到原生 OpenSpec apply。
 - 用户尚未确认：提醒当前推荐路线，并用编号菜单要求用户选择，不要直接开始实现。
 
-如果必须在执行阶段补做路线确认，使用下面的编号菜单，用户回复数字即可：
+如果必须在执行阶段补做路线确认，先判断当前是否已经在附加 git worktree 中，再使用对应编号菜单；用户回复数字即可。
 
-1. 按推荐路线继续
-2. 改成 `Superpowers`
-3. 改成原生 `OpenSpec apply`
-4. 先不要开始实现，我要先回去修改 proposal / design / tasks
+当前不在附加 worktree 中时：
+1. 按推荐组合继续
+2. 改成 `Superpowers + subagent + new worktree`
+3. 改成 `Superpowers + local + new worktree`
+4. 改成 `Superpowers + local + current branch`
+5. 改成原生 `OpenSpec apply + native + current branch`
+6. 先不要开始实现，我要先回去修改 proposal / design / tasks
+
+当前已经在附加 worktree 中时：
+1. 按推荐组合继续
+2. 改成 `Superpowers + subagent + current worktree/current branch`
+3. 改成 `Superpowers + local + current worktree/current branch`
+4. 改成原生 `OpenSpec apply + native + current worktree/current branch`
+5. 先不要开始实现，我要先回去修改 proposal / design / tasks
 其他：如果意图不在以上选项里，允许用户直接补充说明
 
 菜单解释规则：
 
-- 用户回复 `1`：采用当前推荐路线。
-- 用户回复 `2`：切换到 `Superpowers`，并继续用编号菜单确认 `subagent/local` 与 `worktree/current-branch`。
-- 用户回复 `3`：切换到原生 `OpenSpec apply`。
-- 用户回复 `4`：停止执行，返回设计修订路径。
+- 用户回复 `1`：采用当前推荐组合；不要再二次询问 `subagent/local` 或 `worktree/current-branch`。
+- 当前不在附加 worktree 中时，用户回复 `2`：记录 `implementation_path=superpowers`、`execution_method=subagent`、`workspace=worktree`。
+- 当前不在附加 worktree 中时，用户回复 `3`：记录 `implementation_path=superpowers`、`execution_method=local`、`workspace=worktree`。
+- 当前不在附加 worktree 中时，用户回复 `4`：记录 `implementation_path=superpowers`、`execution_method=local`、`workspace=current-branch`。
+- 当前不在附加 worktree 中时，用户回复 `5`：记录 `implementation_path=openspec-apply`、`execution_method=native`、`workspace=current-branch`。
+- 当前不在附加 worktree 中时，用户回复 `6`：停止执行，返回设计修订路径。
+- 当前已经在附加 worktree 中时，用户回复 `2`：记录 `implementation_path=superpowers`、`execution_method=subagent`、`workspace=current-branch`。
+- 当前已经在附加 worktree 中时，用户回复 `3`：记录 `implementation_path=superpowers`、`execution_method=local`、`workspace=current-branch`。
+- 当前已经在附加 worktree 中时，用户回复 `4`：记录 `implementation_path=openspec-apply`、`execution_method=native`、`workspace=current-branch`。
+- 当前已经在附加 worktree 中时，用户回复 `5`：停止执行，返回设计修订路径。
 - 用户输入数字外的自由文本：如果意图清晰，按用户自定义意图处理；若不清晰，只补一个最短澄清问题。
 
 ## 2. Superpowers Make Plan 与实现

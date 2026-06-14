@@ -42,20 +42,36 @@ If the proposal phase already confirmed the implementation path:
 - user chose native `OpenSpec apply`: switch to native apply.
 - user still has not confirmed: restate the recommendation and require a numbered choice before implementation starts.
 
-If execution-time route confirmation is still needed, use this menu and let the user reply with digits:
+If execution-time route confirmation is still needed, first detect whether the current checkout is already an attached git worktree, then use the matching numbered menu. The user may reply with digits.
 
-1. continue with the recommended route
-2. switch to `Superpowers`
-3. switch to native `OpenSpec apply`
-4. do not start implementation yet; go back and revise proposal / design / tasks
+When not currently inside an attached worktree:
+1. continue with the recommended combination
+2. switch to `Superpowers + subagent + new worktree`
+3. switch to `Superpowers + local + new worktree`
+4. switch to `Superpowers + local + current branch`
+5. switch to native `OpenSpec apply + native + current branch`
+6. do not start implementation yet; go back and revise proposal / design / tasks
+
+When already inside an attached worktree:
+1. continue with the recommended combination
+2. switch to `Superpowers + subagent + current worktree/current branch`
+3. switch to `Superpowers + local + current worktree/current branch`
+4. switch to native `OpenSpec apply + native + current worktree/current branch`
+5. do not start implementation yet; go back and revise proposal / design / tasks
 Other: if intent is not covered by the menu, allow free-form instructions
 
 Menu handling rules:
 
-- reply `1`: use the current recommendation
-- reply `2`: switch to `Superpowers`, then keep using numbered menus for `subagent/local` and `worktree/current-branch`
-- reply `3`: switch to native `OpenSpec apply`
-- reply `4`: stop execution and return to design revision
+- reply `1`: use the current recommended combination; do not ask a second round for `subagent/local` or `worktree/current-branch`
+- when not currently inside an attached worktree, reply `2`: record `implementation_path=superpowers`, `execution_method=subagent`, and `workspace=worktree`
+- when not currently inside an attached worktree, reply `3`: record `implementation_path=superpowers`, `execution_method=local`, and `workspace=worktree`
+- when not currently inside an attached worktree, reply `4`: record `implementation_path=superpowers`, `execution_method=local`, and `workspace=current-branch`
+- when not currently inside an attached worktree, reply `5`: record `implementation_path=openspec-apply`, `execution_method=native`, and `workspace=current-branch`
+- when not currently inside an attached worktree, reply `6`: stop execution and return to design revision
+- when already inside an attached worktree, reply `2`: record `implementation_path=superpowers`, `execution_method=subagent`, and `workspace=current-branch`
+- when already inside an attached worktree, reply `3`: record `implementation_path=superpowers`, `execution_method=local`, and `workspace=current-branch`
+- when already inside an attached worktree, reply `4`: record `implementation_path=openspec-apply`, `execution_method=native`, and `workspace=current-branch`
+- when already inside an attached worktree, reply `5`: stop execution and return to design revision
 - free-form text instead of digits: if intent is clear, follow it; otherwise ask one minimal clarification question
 
 ## 2. Superpowers Make Plan and Execution
