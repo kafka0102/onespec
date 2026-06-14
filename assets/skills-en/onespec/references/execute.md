@@ -126,6 +126,21 @@ If the next step is to create a temporary worktree from the current branch, chec
 - if the current branch is `main`/`master` and has uncommitted changes, require a local commit that follows the project commit policy before creating the worktree; do not carry dirty base-branch code straight into a new implementation branch
 - if the user refuses to commit the current dirty changes first, do not continue creating the worktree; pause, or switch to `current-branch` with an explicit risk callout
 
+### 2.1 Implementation Workspace Binding
+
+After creating or selecting the implementation worktree, immediately bind the absolute implementation workspace path as `implementation_workspace_path`, and verify that it is the working directory for subsequent commands before writing the plan:
+
+```bash
+implementation_workspace_path="$(pwd -P)"
+git -C "$implementation_workspace_path" status --short
+```
+
+- If `workspace=worktree`, enter the new worktree first, then set `implementation_workspace_path`; do not keep generating the plan in the origin workspace.
+- If `workspace=current-branch`, or if the current checkout is already an attached worktree, `implementation_workspace_path` is the current `pwd -P`.
+- Every OpenSpec artifact read, Superpowers plan write, `.onespec.yaml` update, handoff generation, and implementation command must run with the implementation workspace as the working directory.
+- The plan path `docs/superpowers/plans/YYYY-MM-DD-<change-id>.md` is always relative to `implementation_workspace_path`. Do not write the plan in the origin workspace and then copy it into the implementation worktree.
+- Before recording the plan and handoff, run `git -C "$implementation_workspace_path" status --short` to confirm that the plan and `.onespec.yaml` are in the same implementation workspace.
+
 Default execution path:
 
 - prefer `subagent-driven-development`

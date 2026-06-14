@@ -126,6 +126,21 @@ apply 前至少读取：
 - 若当前分支是 `main`/`master` 且存在未提交改动，默认要求先按项目提交规范创建本地 commit，再创建 worktree；不允许把未提交的 base 分支代码直接带进新的实现分支。
 - 若用户不接受先提交当前 dirty 改动，则不要继续创建 worktree；应暂停，或改走 `current-branch` 路线并明确风险。
 
+### 2.1 实现工作区定位
+
+创建或选择实现 worktree 后，必须立即把实现工作区绝对路径绑定为 `implementation_workspace_path`，并在写计划前验证它就是后续命令的工作目录：
+
+```bash
+implementation_workspace_path="$(pwd -P)"
+git -C "$implementation_workspace_path" status --short
+```
+
+- 如果选择 `workspace=worktree`，必须先进入新 worktree，再设置 `implementation_workspace_path`；不要在原工作区继续生成计划。
+- 如果选择 `workspace=current-branch` 或当前已经在附加 worktree 中，`implementation_workspace_path` 就是当前 `pwd -P`。
+- 所有读取 OpenSpec artifacts、写入 Superpowers plan、更新 `.onespec.yaml`、生成 handoff 与后续实现命令，都必须以实现工作区为工作目录。
+- 计划路径 `docs/superpowers/plans/YYYY-MM-DD-<change-id>.md` 始终相对于 `implementation_workspace_path`。不得在原工作区先写计划再复制到实现 worktree。
+- 记录计划与 handoff 前，必须用 `git -C "$implementation_workspace_path" status --short` 确认 plan 和 `.onespec.yaml` 出现在同一个实现工作区。
+
 默认执行路径：
 
 - 优先使用 `subagent-driven-development`。

@@ -141,6 +141,11 @@ test('execute reference documents apply, planning, and implementation guardrails
     '`Superpowers + subagent + current worktree/current branch`',
     '不要再二次询问 `subagent/local` 或 `worktree/current-branch`',
     '默认要求先按项目提交规范创建本地 commit，再创建 worktree',
+    '实现工作区定位',
+    'implementation_workspace_path',
+    'git -C "$implementation_workspace_path" status',
+    '不得在原工作区先写计划再复制到实现 worktree',
+    '所有读取 OpenSpec artifacts、写入 Superpowers plan、更新 `.onespec.yaml`、生成 handoff 与后续实现命令，都必须以实现工作区为工作目录',
     '优先使用 `subagent-driven-development`',
     '强制遵守 `test-driven-development`',
     '不允许实现结果与已批准 OpenSpec 范围静默漂移',
@@ -290,6 +295,17 @@ test('English overlays exist for public skills and references', async () => {
   expectIncludes(
     await readEnglishReference('execute.md'),
     'require a local commit that follows the project commit policy before creating the worktree',
+  );
+  expectIncludes(await readEnglishReference('execute.md'), 'Implementation Workspace Binding');
+  expectIncludes(await readEnglishReference('execute.md'), 'implementation_workspace_path');
+  expectIncludes(await readEnglishReference('execute.md'), 'git -C "$implementation_workspace_path" status');
+  expectIncludes(
+    await readEnglishReference('execute.md'),
+    'Do not write the plan in the origin workspace and then copy it into the implementation worktree',
+  );
+  expectIncludes(
+    await readEnglishReference('execute.md'),
+    'Every OpenSpec artifact read, Superpowers plan write, `.onespec.yaml` update, handoff generation, and implementation command must run with the implementation workspace as the working directory',
   );
   expectIncludes(await readEnglishReference('execute.md'), 'temporary zip, export bundle');
   expectIncludes(
