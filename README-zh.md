@@ -2,40 +2,61 @@
 
 > English version: [README.md](README.md)
 
-OneSpec 是一个面向 agent 的 skill bundle 和 CLI，用来执行 OpenSpec + Superpowers 工作流。它会安装 `onespec` 和 `onespec-fast` 两个内置 skill，并通过 `onespec/references/` 阶段模块把 AI Coding 任务路由到设计、执行和归档阶段。
+OneSpec 是一个 CLI 和 agent skill bundle，用来运行 OpenSpec + Superpowers 工作流。
 
-当前官方支持的平台：
+## 功能特点
 
-- Codex
-- Claude Code
-- Cursor
-- Gemini CLI
-- GitHub Copilot
+### `onespec`
 
-技能包本体是标准 `SKILL.md` 加 shell 脚本，因此也可以移植到其他兼容 `SKILL.md` 的 agent；`onespec init` 和 `onespec doctor` 现在会直接管理上面这 5 个平台。
+`onespec` 把 OpenSpec 从一组需要人工串起来的命令，变成 agent 可以执行的完整工作流。它会准备 design、spec 和 tasks，在实现前让人确认设计，并根据复杂度自动推荐实现方式和执行路径，然后继续推进实现、验收和归档。
 
-## 这个 Skill 是做什么的
+适合需要正常设计确认和 review 验收的 change。你只需要用自然语言调用工作流，不需要手动连续执行多个 OpenSpec 命令。
 
-- 把用户请求路由到正确的工作流阶段。
-- 提供 `onespec-fast`，用于低复杂度 change 直接从 proposal 进入原生 OpenSpec apply 并自动归档。
-- 用 OpenSpec 作为范围、审批、规格和归档语义的事实来源。
-- 用 Superpowers 处理高歧义需求澄清、实现计划、TDD 和工程执行约束。
-- 在归档前，把每个 change 的运行时状态保存在 `openspec/changes/<change-id>/.onespec.yaml`。
+### `onespec-fast`
+
+`onespec-fast` 是明确要求自动贯通的 OpenSpec change 的更短路径。它会创建必要的 OpenSpec 上下文，跳过复杂度检查，全程使用原生 `OpenSpec apply`，完成验证后直接归档。
+
+## 流程示意
+
+`onespec`
+
+```mermaid
+flowchart LR
+  A[用户提出需求] --> B[生成 design spec tasks] --> C{人工确认设计} --> D[按复杂度推荐实现方式和路径] --> E[执行已批准的 change] --> F{人工 review 验收} --> G[归档]
+```
+
+`onespec-fast`
+
+```mermaid
+flowchart LR
+  A[快速路径请求] --> B[创建精简 OpenSpec 上下文] --> C[原生 OpenSpec apply] --> D[测试与校验] --> E[归档]
+```
 
 ## 安装
 
-前置要求：
+需要：
 
 - Node.js 20+
 - npm / npx
-- Git
-- 可运行 bash 的 shell 环境
+- 可用 `bash` 的 shell
+
+全局安装：
 
 ```bash
 npm install -g @kafka0102/onespec
 ```
 
-也可以直接通过 `npx` 运行。
+不做全局安装，直接用 `npx` 运行：
+
+```bash
+npx -y @kafka0102/onespec init
+```
+
+如果使用 `npx`，其他命令也可以同样写，例如：
+
+```bash
+npx -y @kafka0102/onespec doctor . --scope project
+```
 
 ## 快速开始
 
@@ -44,42 +65,11 @@ cd your-project
 onespec init
 ```
 
-`onespec init` 会：
-
-1. 引导选择要安装到哪些 AI 平台，支持多选：`codex`、`claude-code`、`cursor`、`gemini-cli`、`github-copilot`
-2. 选择安装范围：项目级（当前目录）或全局（用户主目录）
-3. 选择 OneSpec skill 语言：`zh` 或 `en`
-4. 自动补齐 OpenSpec CLI
-5. 自动为所选平台初始化 OpenSpec
-6. 自动为所选平台安装 Superpowers skills
-7. 部署 OneSpec 内置 skills：`onespec` 和 `onespec-fast`
-8. 在项目级安装时创建 `docs/superpowers/specs/` 和 `docs/superpowers/plans/` 工作目录
-
-常用非交互示例：
-
-```bash
-onespec init . --platform codex --scope project --language zh --yes
-onespec init . --platform claude-code --scope project --language zh --yes
-onespec init . --platform codex,cursor --scope project --language zh --yes
-onespec init --platform cursor --scope global --language zh --yes
-```
-
-如果目标不是默认检测到的平台，请显式加上 `--platform`。需要安装到多个 agent 时，用逗号分隔即可。
-
-> [!TIP]
-> 更新版本
->
-> 执行 `npm install -g @kafka0102/onespec@latest` 即可更新到最新版本。
-
-## 如何使用
-
-先检查环境：
+然后运行：
 
 ```bash
 onespec doctor . --scope project
 ```
-
-如果目标不是 Codex，请额外加上 `--platform <agent>`。
 
 执行完 `onespec init` 后，重启当前 agent 会话，然后直接用自然语言调用，例如：
 
@@ -87,57 +77,5 @@ onespec doctor . --scope project
 使用 onespec：设计一个登录审计功能
 使用 onespec：执行已批准的登录审计 change
 使用 onespec：评审并归档登录审计 change
-使用 onespec-fast：添加一个低复杂度校验提示
+使用 onespec-fast：添加一个校验提示
 ```
-
-路由 skill 会根据意图读取对应 reference 模块：
-
-- 新需求、proposal、范围定义：`onespec/references/design.md`
-- 开始实现或继续实现：`onespec/references/execute.md`
-- 评审、收尾、删除 worktree、归档：`onespec/references/archive.md`
-- 明确要求低复杂度快速路径，自动 proposal、原生 apply 和归档：`onespec-fast`
-
-对于未被 `onespec init` / `onespec doctor` 官方接管的 agent，如果它支持 `SKILL.md`，也可以手动复制技能包到对应目录；只是当前 CLI 不会替你做环境校验，也不会替你自动安装到这些未接管平台。
-
-## 流程执行过程
-
-### 1. 先恢复状态
-
-每次进入都会优先检查已有 OneSpec 状态，而不是依赖聊天历史。活动 change 的状态文件位于：
-
-```text
-openspec/changes/<change-id>/.onespec.yaml
-```
-
-这里会保存阶段、handoff 信息和 touched files，直到 change 真正 archive。
-
-### 2. 设计阶段
-
-`onespec/references/design.md` 负责需求澄清、歧义扫描、生成 `proposal.md`、`design.md`、`tasks.md` 和 spec delta。产物完成后，它还会给出后续应该走 Superpowers 还是直接 `OpenSpec apply` 的建议。
-
-### 3. 执行阶段
-
-`onespec/references/execute.md` 只在已批准的 OpenSpec 范围内工作。它会恢复或生成可执行的实现计划，推进实现，并把任务状态和文件状态同步回 OpenSpec。
-
-### 4. 评审与归档阶段
-
-`onespec/references/archive.md` 负责最终评审、处理反馈、清理 worktree 和执行归档。有后果的收尾动作都需要用户明确确认。
-
-### 5. 快速路径
-
-`onespec-fast` 是一个很薄的独立入口，复用 `onespec/references/fast.md`。它会直接创建 OpenSpec proposal 并执行强制复杂度检查。低复杂度 change 会跳过 proposal 确认，使用原生 OpenSpec apply，并自动归档；中复杂度或高复杂度会回退到常规批准 gate。
-
-## 核心功能点
-
-- 内置工作流技能包：安装 `onespec` 路由和 `onespec-fast` 入口；设计、执行、归档和快速路径规则位于 `onespec/references/`。
-- 项目目录初始化：项目级安装会创建 `docs/superpowers/specs` 和 `docs/superpowers/plans`。
-- 环境自检：`onespec doctor` 会检查 Codex / Claude Code / Cursor / Gemini CLI / GitHub Copilot 下的 OneSpec skill、OpenSpec CLI / 项目初始化状态，以及必需的 Superpowers skill。
-- 中英文切换：`onespec init` 支持 `--language zh|en`。
-- 运行时状态受控：执行阶段的 handoff 和 touched files 会持续写入 `.onespec.yaml`，直到归档清理。
-
-## 要求
-
-- Node.js `>=20`
-- 官方支持 Codex、Claude Code、Cursor、Gemini CLI、GitHub Copilot
-- 需要 OpenSpec CLI 才能跑 OpenSpec 项目工作流
-- 推荐安装完整 Superpowers skill 以走完整执行路径

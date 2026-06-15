@@ -37,7 +37,7 @@ Classify the current request first:
 - `propose`: define a new change, clarify scope, generate `proposal.md`, `design.md`, `tasks.md`, and spec deltas. Read `references/design.md`.
 - `apply`: implement an approved change, continue an existing change, generate or resume a Superpowers plan, and sync OpenSpec state. Read `references/execute.md`.
 - `review-closeout`: user review, feedback handling, worktree deletion, or archive. Read `references/archive.md`.
-- `fast`: the user explicitly asks for `onespec-fast`, the fast path, fast apply, or automatic low-complexity execution. Read `references/fast.md`; the standalone `onespec-fast` entrypoint also routes to this same reference.
+- `fast`: the user explicitly asks for `onespec-fast`, the fast path, fast apply, automatic OpenSpec end-to-end execution, or automatic proposal/implementation/archive. Read `references/fast.md`; the standalone `onespec-fast` entrypoint also routes to this same reference.
 
 If intent is unclear, ask one short question only.
 
@@ -46,7 +46,7 @@ Default intent mapping:
 - Requests like "new requirement", "design this", "write a proposal/spec", or "define a change" read `references/design.md`.
 - Requests like "start implementation", "execute this change", "apply this proposal/change", "continue this change", "start coding/development", or "make plan" read `references/execute.md`. If the proposal is not approved yet, stop and send the flow back to the approval gate in `references/design.md`.
 - Requests like "review", "close out", "archive", or "delete the worktree" read `references/archive.md`.
-- Requests like "onespec-fast", "fast path", "fast apply", or "automatic low-complexity execution" read `references/fast.md`.
+- Requests like "onespec-fast", "fast path", "fast apply", "automatic OpenSpec end-to-end execution", or "automatic proposal/implementation/archive" read `references/fast.md`.
 
 ## Reference Loading
 

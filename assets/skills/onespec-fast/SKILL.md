@@ -1,6 +1,6 @@
 ---
 name: onespec-fast
-description: 当用户明确要求使用 OneSpec 快速路径、onespec-fast、fast apply、低复杂度变更自动 proposal/开发/归档时使用。该 skill 会复用 `onespec/references/fast.md`，并只在复杂度检查确认低复杂度时自动走原生 OpenSpec apply 和直接归档。
+description: 当用户明确要求使用 OneSpec 快速路径、onespec-fast、fast apply、OpenSpec 自动 proposal/开发/归档或自动贯通时使用。该 skill 会复用 `onespec/references/fast.md`，全程走原生 OpenSpec apply，不做复杂度检查，不生成 Superpowers plan。
 ---
 
 # OneSpec Fast
@@ -13,7 +13,7 @@ description: 当用户明确要求使用 OneSpec 快速路径、onespec-fast、f
 
 ## 入口规则
 
-- 只有用户明确要求 `onespec-fast`、快速路径、fast apply、低复杂度自动 proposal/开发/归档时使用。
+- 只有用户明确要求 `onespec-fast`、快速路径、fast apply、OpenSpec 自动 proposal/开发/归档或自动贯通时使用。
 - 先读取相邻安装的 `../onespec/SKILL.md`，遵守其中的恢复优先、共同约束和 reference 读取规则。
 - 然后读取 `../onespec/references/fast.md` 并按其中步骤执行。
 - 如果相邻路径不可用，先在当前项目、`$HOME/.codex`、`$HOME/.claude`、`$HOME/.cursor`、`$HOME/.gemini`、`$HOME/.copilot`、`$HOME/.agents`、`$HOME/.config` 下定位 `*/onespec/references/fast.md`；仍找不到时停止并要求重新运行 `onespec init --overwrite`。

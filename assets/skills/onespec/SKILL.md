@@ -37,7 +37,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - `propose`：定义新 change、梳理范围、生成 `proposal.md`、`design.md`、`tasks.md` 与 spec delta。读取 `references/design.md`。
 - `apply`：实现已批准 change、继续已有 change、生成或恢复 Superpowers plan、回填 OpenSpec 状态。读取 `references/execute.md`。
 - `review-closeout`：用户评审、处理反馈、删除 worktree 或执行归档。读取 `references/archive.md`。
-- `fast`：用户明确要求 `onespec-fast`、快速路径、fast apply 或低复杂度自动贯通时。读取 `references/fast.md`；独立 `onespec-fast` 入口也转入同一 reference。
+- `fast`：用户明确要求 `onespec-fast`、快速路径、fast apply、OpenSpec 自动贯通或自动 proposal/开发/归档时。读取 `references/fast.md`；独立 `onespec-fast` 入口也转入同一 reference。
 
 如果用户意图不清，只问一个简短问题，不要同时问多个。
 
@@ -46,7 +46,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - 用户说“新需求”、“设计一下”、“写 proposal / spec”、“定义 change”时，读取 `references/design.md`。
 - 用户说“开始实现”、“执行这个 change”、“apply 这个 proposal / change”、“继续做这个 change”、“开始 coding / 开发”、“make plan”时，读取 `references/execute.md`。如果 proposal 尚未批准，必须停止并转回 `references/design.md` 的批准 gate。
 - 用户说“review”、“收尾”、“归档”、“archive”、“删除 worktree”时，读取 `references/archive.md`。
-- 用户明确说“onespec-fast”、“快速路径”、“fast apply”或“低复杂度自动贯通”时，读取 `references/fast.md`。
+- 用户明确说“onespec-fast”、“快速路径”、“fast apply”、“OpenSpec 自动贯通”或“自动 proposal/开发/归档”时，读取 `references/fast.md`。
 
 ## Reference 读取规则
 

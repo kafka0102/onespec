@@ -1,6 +1,6 @@
 # Fast Path
 
-Read on demand from `onespec` and the standalone `onespec-fast` entrypoint for the `fast` path. The goal is to skip the normal proposal approval gate and post-implementation archive choice, but only after the task artifact proves the change is low complexity.
+Read on demand from `onespec` and the standalone `onespec-fast` entrypoint for the `fast` path. The goal is to skip the normal proposal approval gate, complexity check, implementation-path selection, and post-implementation archive choice. Once in the fast path, use native `OpenSpec apply` for the whole implementation and archive directly.
 
 ## 1. Intake
 
@@ -22,7 +22,7 @@ Treat `recover` output as the execution contract. Read at least `phase`, `next_s
 
 Use rules:
 
-- Use only when the user explicitly asks for `onespec-fast`, the fast path, fast apply, or low-complexity automatic execution.
+- Use only when the user explicitly asks for `onespec-fast`, the fast path, fast apply, automatic OpenSpec proposal/implementation/archive, or automatic end-to-end execution.
 - Do not ask the user to name the change. Generate a short kebab-case `change-id`; append a numeric suffix if needed.
 - Read the minimum needed context: `openspec/config.yaml`, `openspec/project.md`, relevant `openspec/specs/**`, project entry docs, current branch, and workspace state.
 - Pause only when required OpenSpec context is too incomplete to produce a valid proposal, or project docs explicitly forbid automatic edits on the current branch.
@@ -47,41 +47,13 @@ Create state and handoff:
 "$ONESPEC_BASH" "$ONESPEC_HANDOFF" <change-id> proposal --write
 ```
 
-Do not show the normal proposal approval menu. `onespec-fast` means: if complexity is low, the user has authorized continuing into implementation and archive.
+Do not show the normal proposal approval menu. `onespec-fast` means the user has authorized continuing with native `OpenSpec apply` implementation and archive.
 
-## 3. Mandatory Complexity Check
+## 3. OpenSpec Automatic Apply and Archive
 
-After proposal creation, read the task artifact and run the complexity check. Never skip this because the path is fast.
-
-Complexity inputs:
-
-- `openspec/changes/<change-id>/tasks.md`
-- `proposal.md`
-- `design.md`, if present
-- relevant `openspec/specs/**`
-- if the current schema is not `spec-driven`, read task artifacts or equivalent apply context from `openspec status --change "<change-id>" --json` or `openspec instructions apply --change "<change-id>" --json`
-
-Complexity levels:
-
-- `low complexity`: few tasks, linear path, single module or few files, almost no cross-layer dependency, and no migration / schema / multi-surface coordination / manual rollout ordering.
-- `medium complexity`: limited cross-module or cross-surface coordination with clear boundaries; staged verification or stricter review may be needed.
-- `high complexity`: crosses multiple workspaces or capabilities, combines API/database/jobs/shared packages/visual confirmation dimensions, or has strong task coupling.
-
-Always report:
-
-- change id and artifact locations
-- task artifact summary
-- complexity level with concrete reasons
-- whether the automatic path will continue
-
-## 4. Low-Complexity Automatic Apply and Archive
-
-Only continue automatically when complexity is `low complexity`. Do not ask the user to confirm the proposal artifacts again.
-
-Record the low-complexity fast path:
+After proposal creation, do not run a complexity check and do not switch to a Superpowers plan/subagent. Record the fast path directly and start implementation:
 
 ```bash
-"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> complexity low
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> implementation_path openspec-apply
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> execution_method native
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> workspace current-branch
@@ -107,7 +79,7 @@ Implementation rules:
 After implementation:
 
 - Check off completed tasks in `tasks.md`.
-- If implementation exposes a new design conflict, stop the automatic path, fix OpenSpec artifacts, and return to the normal design phase / execute phase gates.
+- If implementation exposes a new design conflict, stop automatic implementation, fix OpenSpec artifacts, and stay on the OpenSpec proposal/apply path; switch to Superpowers only if the user explicitly asks.
 - Run project tests.
 - Run `openspec validate <change-id> --strict`.
 - Write the review handoff, but do not pause for user review:
@@ -127,29 +99,12 @@ Then archive directly without showing the archive phase closeout menu:
 
 If `related-dirty` is empty, do not run `commit-related <change-id> closeout`. `run-actions` sets `phase archived` / `archive archived` and handles the post-archive commit plus runtime cleanup.
 
-## 5. Medium/High Complexity Fallback
-
-If complexity is not `low complexity`:
-
-- Do not implement automatically.
-- Do not archive automatically.
-- Record the actual complexity:
-
-```bash
-"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> complexity <medium|high>
-"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> phase proposal-ready
-```
-
-- State that the fast path has stopped and return to the normal OneSpec gate.
-- Use the design phase Proposal Approval Gate and path-selection menu so the user explicitly approves the proposal / design / spec before implementation.
-
-## 6. Stop Conditions
+## 4. Stop Conditions
 
 Pause if:
 
 - required OpenSpec context is missing and a valid proposal cannot be written
 - the request clearly spans multiple changes that should be split
-- complexity is medium or high
 - tests or `openspec validate <change-id> --strict` fail and cannot be fixed inside the approved scope
 - implementation reveals scope expansion, design change, or spec semantic change
 - project docs explicitly forbid automatic implementation or automatic archive on the current branch

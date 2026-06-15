@@ -1,6 +1,6 @@
 ---
 name: onespec-fast
-description: Use when the user explicitly asks for the OneSpec fast path, onespec-fast, fast apply, or automatic proposal/implementation/archive for a low-complexity change. This skill reuses `onespec/references/fast.md` and only continues through native OpenSpec apply and direct archive after the mandatory complexity check confirms low complexity.
+description: Use when the user explicitly asks for the OneSpec fast path, onespec-fast, fast apply, automatic OpenSpec proposal/implementation/archive, or automatic end-to-end execution. This skill reuses `onespec/references/fast.md` and uses native OpenSpec apply throughout, with no complexity check and no Superpowers plan.
 ---
 
 # OneSpec Fast
@@ -13,7 +13,7 @@ Announce at the start:
 
 ## Entry Rules
 
-- Use only when the user explicitly asks for `onespec-fast`, the fast path, fast apply, or automatic low-complexity proposal/implementation/archive.
+- Use only when the user explicitly asks for `onespec-fast`, the fast path, fast apply, automatic OpenSpec proposal/implementation/archive, or automatic end-to-end execution.
 - First read the sibling `../onespec/SKILL.md` and follow its recovery-first, shared-constraint, and reference-loading rules.
 - Then read `../onespec/references/fast.md` and execute those steps.
 - If the sibling path is unavailable, locate `*/onespec/references/fast.md` under the current project, `$HOME/.codex`, `$HOME/.claude`, `$HOME/.cursor`, `$HOME/.gemini`, `$HOME/.copilot`, `$HOME/.agents`, or `$HOME/.config`. If still missing, stop and ask the user to rerun `onespec init --overwrite`.
