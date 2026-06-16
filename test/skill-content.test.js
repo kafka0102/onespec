@@ -214,23 +214,29 @@ test('archive reference documents review closeout and archive guardrails', async
   }
 });
 
-test('fast reference documents direct proposal, complexity check, native apply, and archive', async () => {
+test('fast reference documents direct proposal, native apply, and archive', async () => {
   const reference = await readReference('fast.md');
 
   for (const expected of [
     'Fast Path',
     '直接 Proposal',
-    '强制复杂度检查',
-    '低复杂度自动开发与归档',
-    'Proposal 批准 Gate',
+    'OpenSpec 自动开发与归档',
     'implementation_path openspec-apply',
     'execution_method native',
     'phase implementing',
     'openspec validate <change-id> --strict',
     'run-actions <change-id> archive-only',
-    '中高复杂度回退',
   ]) {
     expectIncludes(reference, expected);
+  }
+
+  for (const unexpected of [
+    '强制复杂度检查',
+    '中高复杂度回退',
+    'Proposal 批准 Gate',
+    '复杂度 <low\\|medium\\|high>',
+  ]) {
+    assert.doesNotMatch(reference, new RegExp(unexpected));
   }
 });
 
@@ -329,10 +335,23 @@ test('English overlays exist for public skills and references', async () => {
   expectIncludes(await readEnglishReference('archive.md'), 'run `archive-then-merge-worktree`');
   expectIncludes(await readEnglishReference('archive.md'), 'temporary zip files, export bundles');
   expectIncludes(await readEnglishReference('design.md'), 'extensible module');
-  expectIncludes(await readEnglishReference('fast.md'), 'Mandatory Complexity Check');
+  expectIncludes(
+    await readEnglishReference('fast.md'),
+    'skip the normal proposal approval gate, complexity check, implementation-path selection, and post-implementation archive choice',
+  );
   expectIncludes(await readEnglishReference('fast.md'), 'run-actions <change-id> archive-only');
   assert.doesNotMatch(
     await readEnglishReference('archive.md'),
     /require one more explicit archive command/i,
   );
+});
+
+test('README documents onespec-fast as direct native apply without complexity routing', async () => {
+  const readme = await readFile('README.md', 'utf8');
+  const readmeZh = await readFile('README-zh.md', 'utf8');
+
+  expectIncludes(readme, '`onespec-fast` is the shorter path for explicitly automatic OpenSpec changes');
+  expectIncludes(readme, 'skips the complexity check');
+  expectIncludes(readmeZh, '`onespec-fast` 是明确要求自动贯通的 OpenSpec change 的更短路径');
+  expectIncludes(readmeZh, '跳过复杂度检查');
 });

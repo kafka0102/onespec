@@ -1,6 +1,6 @@
 # Fast Path
 
-供 `onespec` 和独立 `onespec-fast` 入口在 `fast` 路径按需读取。目标是省掉常规 Proposal 批准 Gate、实现路径选择和实现完成后的人工归档选择，但仍然保留一次强制复杂度检查。只有低复杂度 change 才允许继续原生 `OpenSpec apply` 自动开发并直接归档；中高复杂度必须回退到常规 `onespec` 路径。
+供 `onespec` 和独立 `onespec-fast` 入口在 `fast` 路径按需读取。目标是省掉常规 proposal 批准 gate、复杂度检查、实现路径选择和实现完成后的人工归档选择。进入 fast 路径后，全程使用原生 `OpenSpec apply` 实现并直接归档。
 
 ## 1. 接入
 
@@ -49,38 +49,11 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 不要输出常规 proposal 批准菜单。`onespec-fast` 的用户意图表示授权继续使用原生 `OpenSpec apply` 开发并归档。
 
-## 3. Proposal 批准 Gate
+## 3. OpenSpec 自动开发与归档
 
-快速路径仍然有 Proposal 批准 Gate，但 gate 的通过条件不同：
-
-- 只有当用户明确要求 `onespec-fast`、快速路径、fast apply、OpenSpec 自动 proposal/开发/归档或自动贯通时，才视为已经批准当前 proposal artifacts。
-- 这个自动批准只对“继续执行强制复杂度检查”生效，不等于所有复杂度等级都可以自动实现。
-- 不要展示常规 proposal 批准菜单，也不要再要求用户补发一次“批准”。
-
-## 4. 强制复杂度检查
-
-proposal 产出后，必须先读取 `tasks.md`、`proposal.md`、`design.md`（如果存在）并做一次强制复杂度检查。
-
-判定规则沿用 `design.md` 中的复杂度标准：
-
-- `低复杂度`：task 数量少、路径线性、单模块或少量文件改动、几乎没有跨层依赖，也不涉及 migration / schema / 多端联动。
-- `中复杂度`：存在少量跨模块或跨端协作，边界清晰，但可能更适合分工、TDD、review gate 或分阶段验证。
-- `高复杂度`：明显跨多个 workspace 或 capability，涉及 API、数据库、任务系统、共享包或多维度联动，task 依赖强。
-
-记录复杂度：
+proposal 产出后不要进行复杂度检查，也不要切换到 Superpowers plan/subagent。直接记录快速路径并进入实现：
 
 ```bash
-"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> complexity <low|medium|high>
-```
-
-只有 `低复杂度` 可以继续快速路径自动实现。`中复杂度` 或 `高复杂度` 必须回退。
-
-## 5. 低复杂度自动开发与归档
-
-如果强制复杂度检查结果是 `低复杂度`，不要切换到 Superpowers plan/subagent。直接记录快速路径并进入实现：
-
-```bash
-"$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> complexity low
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> implementation_path openspec-apply
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> execution_method native
 "$ONESPEC_BASH" "$ONESPEC_STATE" set <change-id> workspace current-branch
@@ -126,17 +99,7 @@ proposal 产出后，必须先读取 `tasks.md`、`proposal.md`、`design.md`（
 
 如果 `related-dirty` 为空，不需要执行 `commit-related <change-id> closeout`。`run-actions` 会把状态置为 `archived` / `archive archived`，并负责 archive 后提交与 runtime cleanup。
 
-## 6. 中高复杂度回退
-
-如果强制复杂度检查结果是 `中复杂度` 或 `高复杂度`，必须停止自动 apply / archive，并回退到常规 `onespec` 路径：
-
-- 保留刚刚生成的 proposal / design / tasks / spec artifacts，不要删除。
-- 保留 `phase proposal-ready`，并写入复杂度等级。
-- 重新读取 `onespec/references/design.md` 的 `Proposal 批准 Gate 与路径选择`，按常规流程给出推荐组合和显式菜单。
-- 只有用户随后明确接受常规推荐路径，或覆盖为其他组合时，才允许进入 `execute.md`。
-- 不要在中高复杂度场景下继续强行使用 `implementation_path openspec-apply`、`execution_method native` 或自动 `archive-only`。
-
-## 7. 停止条件
+## 4. 停止条件
 
 以下情况必须暂停：
 
