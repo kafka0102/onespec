@@ -1,6 +1,6 @@
 ---
 name: onespec-fast
-description: 当用户明确要求使用 OneSpec 快速路径、onespec-fast、fast apply、OpenSpec 自动 proposal/开发/归档或自动贯通时使用。该 skill 会复用 `onespec/references/fast.md`，全程走原生 OpenSpec apply，不做复杂度检查，不生成 Superpowers plan。
+description: 当用户明确要求使用 OneSpec 快速路径、onespec-fast、fast apply、OpenSpec 自动 proposal/开发/归档或自动贯通时使用。该 skill 会复用 `onespec/references/fast.md`，对 proposal 后任务做强制复杂度检查；低复杂度走原生 OpenSpec apply 自动实现并归档，中高复杂度回退到常规 OneSpec 路径。
 ---
 
 # OneSpec Fast

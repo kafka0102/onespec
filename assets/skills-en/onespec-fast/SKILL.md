@@ -1,6 +1,6 @@
 ---
 name: onespec-fast
-description: Use when the user explicitly asks for the OneSpec fast path, onespec-fast, fast apply, automatic OpenSpec proposal/implementation/archive, or automatic end-to-end execution. This skill reuses `onespec/references/fast.md` and uses native OpenSpec apply throughout, with no complexity check and no Superpowers plan.
+description: Use when the user explicitly asks for the OneSpec fast path, onespec-fast, fast apply, automatic OpenSpec proposal/implementation/archive, or automatic end-to-end execution. This skill reuses `onespec/references/fast.md`, runs a mandatory post-proposal complexity check, uses native OpenSpec apply only for low-complexity work, and falls back to the standard OneSpec path for medium/high complexity.
 ---
 
 # OneSpec Fast
