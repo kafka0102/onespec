@@ -1,6 +1,7 @@
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
+import { readFile } from 'node:fs/promises';
 
 import { doctorProject } from './doctor.js';
 import { SUPPORTED_LANGUAGES } from './init.js';
@@ -167,6 +168,19 @@ function printHelp() {
 `);
 }
 
+let cachedVersion;
+
+async function getPackageVersion() {
+  if (cachedVersion) {
+    return cachedVersion;
+  }
+
+  const packageJsonPath = new URL('../package.json', import.meta.url);
+  const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'));
+  cachedVersion = packageJson.version;
+  return cachedVersion;
+}
+
 function printSummary(result) {
   console.log('\nOneSpec 初始化完成\n');
   console.log(`目标平台：${result.platformNames.join(', ')}`);
@@ -208,6 +222,10 @@ function printDoctor(report) {
 export async function main(argv = process.argv.slice(2)) {
   const { command, options } = parseArgs(argv);
 
+  if (command === 'version' || command === '--version' || command === '-v') {
+    console.log(await getPackageVersion());
+    return;
+  }
   if (command === 'help' || command === '--help' || command === '-h') {
     printHelp();
     return;

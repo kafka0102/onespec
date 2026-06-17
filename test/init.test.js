@@ -143,6 +143,27 @@ echo "npx:$@" >> "${logPath}"
   assert.match(toolLog, /npx:skills add obra\/superpowers -y --agent codex --agent cursor/);
 });
 
+test('CLI prints package version for version flags and command', async () => {
+  const packageJson = JSON.parse(await readFile(path.resolve('package.json'), 'utf8'));
+
+  const longFlag = await execFileAsync(process.execPath, ['bin/onespec.js', '--version'], {
+    cwd: path.resolve('.'),
+  });
+  const shortFlag = await execFileAsync(process.execPath, ['bin/onespec.js', '-v'], {
+    cwd: path.resolve('.'),
+  });
+  const command = await execFileAsync(process.execPath, ['bin/onespec.js', 'version'], {
+    cwd: path.resolve('.'),
+  });
+
+  assert.equal(longFlag.stdout.trim(), packageJson.version);
+  assert.equal(shortFlag.stdout.trim(), packageJson.version);
+  assert.equal(command.stdout.trim(), packageJson.version);
+  assert.equal(longFlag.stderr, '');
+  assert.equal(shortFlag.stderr, '');
+  assert.equal(command.stderr, '');
+});
+
 test('initProject can install English skill overlays', async () => {
   const projectPath = await tmpProject();
 
