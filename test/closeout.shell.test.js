@@ -188,6 +188,33 @@ test('onespec-closeout validate-actions allows archive-only on target branch and
   assert.match(recommended.stdout, /recommended_actions: archive-only/);
 });
 
+test('onespec-closeout inspect recommends archive-only on master without temporary worktree', async () => {
+  const projectPath = await tmpProject();
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+
+  await initGitRepo(projectPath);
+  await execFileAsync('git', ['branch', '-m', 'master'], { cwd: projectPath });
+  await initChangeState(projectPath, 'archive-master', {
+    origin_branch: 'master',
+    origin_workspace_path: projectPath,
+    origin_workspace_mode: 'current-branch',
+  });
+  await advanceChangeToReview(projectPath, 'archive-master');
+  await execFileAsync('bash', [stateScriptPath, 'set', 'archive-master', 'origin_branch', 'master'], {
+    cwd: projectPath,
+  });
+
+  const { stdout } = await execFileAsync('bash', [closeoutScriptPath, 'inspect', 'archive-master'], {
+    cwd: projectPath,
+  });
+
+  assert.match(stdout, /current_branch: master/);
+  assert.match(stdout, /temporary_worktree: false/);
+  assert.match(stdout, /recommended_actions: archive-only/);
+  assert.match(stdout, /recommended_reason: already-on-target-path/);
+});
+
 test('onespec-closeout validate-actions allows archive-only inside a temporary worktree', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');

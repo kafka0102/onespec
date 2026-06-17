@@ -231,6 +231,23 @@ git -C "$implementation_workspace_path" status --short
 ---
 ```
 
+如果当前不在临时 worktree，且当前分支就是 `origin_branch`，并且该分支是 `main` 或 `master`，则不要提示“合并分支到 base 分支”或“删除当前临时 worktree”。此时收尾菜单必须收缩为仅归档一个选项：
+
+```
+---
+✅ 实现与验证已完成。
+
+📍 当前分支: `<branch>`
+📍 当前工作区: `<path>`
+📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
+
+1. 直接归档，不合并到 base 分支
+其他：任意非编号内容视为继续修改当前实现；用户未输入时默认停留在当前评审阶段
+---
+```
+
+也就是说，`master/main` 分支就不要提示合并分支/删除 worktree。
+
 如果当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree；若你直接回复非编号内容，我会按继续修改处理。"
 
 - 选择 `1` 时，archive phase 必须按“先归档，再合并分支到 base 分支”的固定顺序执行。

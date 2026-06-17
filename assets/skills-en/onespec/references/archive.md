@@ -99,6 +99,15 @@ Menu interpretation:
 
 If the current workspace is not a temporary worktree and the code is already truly on the target branch, `archive-only` is allowed.
 
+If the current checkout is not a temporary worktree, the current branch already equals `origin_branch`, and that branch is `main` or `master`, do not show the "archive then merge" or "delete the current temporary worktree" options. In that case the closeout menu must contain only:
+
+```text
+1. Archive only, without merging
+Other: any non-numbered content means continue modifying the current implementation; if the user gives no input, remain paused in the current review stage
+```
+
+In other words, on `master/main`, do not prompt for branch merge or worktree deletion.
+
 If the user already selected a closeout number in the execute phase completion menu, do not repeat the same menu here; combine that reply with the actual workspace state and execute the matching action directly.
 
 ## 3. Archive Rules

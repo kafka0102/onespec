@@ -99,6 +99,15 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 如果当前不是临时 worktree，且代码已经真正位于目标分支，也允许执行 `archive-only`。
 
+如果当前不在临时 worktree，且当前分支就是 `origin_branch`，并且该分支是 `main` 或 `master`，则不要再展示“归档后合并”或“删除当前临时 worktree”两个选项。此时收尾菜单只保留一个编号：
+
+```text
+1. 直接归档，不合并到 base 分支
+其他：任意非编号内容视为继续修改当前实现；用户未输入时默认停留在当前评审阶段
+```
+
+也就是说，`master/main` 分支就不要提示合并分支/删除 worktree。
+
 如果用户之前已经在 execute phase 的完成菜单里选了收尾编号，则这里不再重复相同菜单，而是结合实际工作区状态直接执行对应动作。
 
 ## 3. 归档规则

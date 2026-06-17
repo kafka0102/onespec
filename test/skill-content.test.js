@@ -156,6 +156,7 @@ test('execute reference documents apply, planning, and implementation guardrails
     '归档当前 change，并合并分支到 base 分支',
     '直接归档，不合并到 base 分支',
     '删除当前临时 worktree，废弃代码',
+    '`master/main` 分支就不要提示合并分支/删除 worktree',
     '用户未输入时默认停留在当前评审阶段',
     'openspec validate <change-id> --strict',
   ]) {
@@ -181,6 +182,7 @@ test('archive reference documents review closeout and archive guardrails', async
     '归档当前 change，并合并分支到 base 分支',
     '直接归档，不合并到 base 分支',
     '删除当前临时 worktree，废弃代码',
+    '`master/main` 分支就不要提示合并分支/删除 worktree',
     '当前分支名',
     'origin_branch',
     '临时实现分支或临时 worktree',

@@ -231,6 +231,23 @@ Other: any non-numbered content means continue modifying the current implementat
 ---
 ```
 
+If the current checkout is not a temporary worktree, the current branch already equals `origin_branch`, and that branch is `main` or `master`, do not show "merge the branch into the base branch" or "delete the current temporary worktree". In that case the closeout menu must collapse to a single archive-only option:
+
+```text
+---
+Implementation and verification are complete.
+
+Current branch: <branch>
+Current workspace: <path>
+Origin: <origin_branch> @ <origin_workspace_path>
+
+1. Archive only, without merging
+Other: any non-numbered content means continue modifying the current implementation; if the user gives no input, remain paused in the current review stage
+---
+```
+
+In other words, on `master/main`, do not prompt for branch merge or worktree deletion.
+
 If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
 
 - If the user chooses `1`, archive phase must archive first, then merge the branch into the base branch.
