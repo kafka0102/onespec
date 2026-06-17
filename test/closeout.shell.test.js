@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -229,6 +229,56 @@ test('onespec-closeout validate-actions allows archive-only inside a temporary w
   assert.match(stdout, /selected_actions: archive-only/);
   assert.match(stdout, /valid: true/);
   assert.match(stdout, /允许直接归档当前 change，不合并到 base 分支，也不自动删除当前 worktree。/);
+});
+
+test('onespec-closeout inspect from origin workspace follows the implementation worktree state', async () => {
+  const projectPath = await tmpProject();
+  const worktreePath = await tmpProject('onespec-closeout-wt-');
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const stateScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+
+  await initGitRepo(projectPath);
+  await initChangeState(projectPath, 'inspect-login', {
+    origin_branch: 'main',
+    origin_workspace_path: projectPath,
+    origin_workspace_mode: 'current-branch',
+    implementation_workspace_path: worktreePath,
+  });
+  await execFileAsync('git', ['add', 'openspec/changes/inspect-login/.onespec.yaml'], { cwd: projectPath });
+  await execFileAsync('git', ['commit', '-m', 'seed inspect-login state'], { cwd: projectPath });
+
+  await execFileAsync('git', ['worktree', 'add', '-b', 'feature/inspect-login', worktreePath, 'HEAD'], {
+    cwd: projectPath,
+  });
+  await advanceChangeToReview(worktreePath, 'inspect-login');
+  await execFileAsync('bash', [stateScriptPath, 'set', 'inspect-login', 'origin_branch', 'main'], {
+    cwd: worktreePath,
+  });
+  await execFileAsync(
+    'bash',
+    [stateScriptPath, 'set', 'inspect-login', 'origin_workspace_path', projectPath],
+    { cwd: worktreePath },
+  );
+  await execFileAsync(
+    'bash',
+    [stateScriptPath, 'set', 'inspect-login', 'origin_workspace_mode', 'current-branch'],
+    { cwd: worktreePath },
+  );
+  await execFileAsync(
+    'bash',
+    [stateScriptPath, 'set', 'inspect-login', 'implementation_workspace_path', worktreePath],
+    { cwd: worktreePath },
+  );
+
+  const { stdout } = await execFileAsync('bash', [closeoutScriptPath, 'inspect', 'inspect-login'], {
+    cwd: projectPath,
+  });
+  const canonicalWorktreePath = await realpath(worktreePath);
+
+  assert.match(stdout, /current_branch: feature\/inspect-login/);
+  assert.match(stdout, new RegExp(`current_workspace_path: ${canonicalWorktreePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  assert.match(stdout, /temporary_worktree: true/);
+  assert.match(stdout, /recommended_actions: archive-then-merge-worktree/);
 });
 
 test('onespec-closeout validate-actions supports archive-then-merge or discard from a temporary worktree and rejects multiple actions', async () => {

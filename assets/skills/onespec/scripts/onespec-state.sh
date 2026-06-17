@@ -29,6 +29,41 @@ state_file() {
   printf '%s/.onespec.yaml\n' "$(change_dir "$change")"
 }
 
+current_workspace_path() {
+  pwd -P
+}
+
+in_git_repo() {
+  git rev-parse --show-toplevel >/dev/null 2>&1
+}
+
+canonicalize_dir() {
+  local dir="$1"
+  if [ -z "$dir" ] || [ "$dir" = "unknown" ] || [ ! -d "$dir" ]; then
+    printf '%s\n' "$dir"
+    return 0
+  fi
+  (
+    cd "$dir"
+    pwd -P
+  )
+}
+
+state_file_in_workspace() {
+  local workspace="$1"
+  local change="$2"
+  local active archived
+  active="$workspace/openspec/changes/$change/.onespec.yaml"
+  archived="$workspace/openspec/changes/archive/$change/.onespec.yaml"
+  if [ -f "$active" ]; then
+    printf '%s\n' "$active"
+  elif [ -f "$archived" ]; then
+    printf '%s\n' "$archived"
+  else
+    printf '%s\n' "$active"
+  fi
+}
+
 today() {
   date +%Y-%m-%d
 }
@@ -41,6 +76,96 @@ field_value() {
   local file="$1"
   local key="$2"
   awk -F ': *' -v key="$key" '$1 == key { sub(/^[^:]+: */, ""); print; found=1; exit } END { if (!found) exit 0 }' "$file" 2>/dev/null
+}
+
+phase_rank() {
+  case "$1" in
+    intake) echo 0 ;;
+    proposal-ready) echo 1 ;;
+    approved) echo 2 ;;
+    plan-ready) echo 3 ;;
+    implementing) echo 4 ;;
+    review) echo 5 ;;
+    done) echo 6 ;;
+    archived) echo 7 ;;
+    *) echo -1 ;;
+  esac
+}
+
+preferred_state_file() {
+  local left="$1"
+  local right="$2"
+  local left_phase right_phase left_rank right_rank left_updated right_updated
+
+  if [ -z "$left" ] || [ ! -f "$left" ]; then
+    printf '%s\n' "$right"
+    return 0
+  fi
+  if [ -z "$right" ] || [ ! -f "$right" ]; then
+    printf '%s\n' "$left"
+    return 0
+  fi
+
+  left_phase="$(field_value "$left" phase)"
+  right_phase="$(field_value "$right" phase)"
+  left_rank="$(phase_rank "$left_phase")"
+  right_rank="$(phase_rank "$right_phase")"
+  if [ "$right_rank" -gt "$left_rank" ]; then
+    printf '%s\n' "$right"
+    return 0
+  fi
+  if [ "$left_rank" -gt "$right_rank" ]; then
+    printf '%s\n' "$left"
+    return 0
+  fi
+
+  left_updated="$(field_value "$left" updated_at)"
+  right_updated="$(field_value "$right" updated_at)"
+  if [ -n "$right_updated" ] && { [ -z "$left_updated" ] || [ "$right_updated" \> "$left_updated" ]; }; then
+    printf '%s\n' "$right"
+    return 0
+  fi
+  printf '%s\n' "$left"
+}
+
+resolve_state_file() {
+  local change="$1"
+  local current_workspace current_file best_file implementation_workspace implementation_file worktree_path candidate
+
+  current_workspace="$(current_workspace_path)"
+  current_file="$(state_file_in_workspace "$current_workspace" "$change")"
+  if [ ! -f "$current_file" ] && ! in_git_repo; then
+    printf '%s\n' "$current_file"
+    return 0
+  fi
+
+  best_file=""
+  if [ -f "$current_file" ]; then
+    best_file="$current_file"
+    implementation_workspace="$(canonicalize_dir "$(field_value "$current_file" implementation_workspace_path)")"
+    if [ -n "$implementation_workspace" ] && [ "$implementation_workspace" != "unknown" ]; then
+      implementation_file="$(state_file_in_workspace "$implementation_workspace" "$change")"
+      if [ -f "$implementation_file" ]; then
+        best_file="$(preferred_state_file "$best_file" "$implementation_file")"
+      fi
+    fi
+  fi
+
+  if in_git_repo; then
+    while IFS= read -r worktree_path; do
+      [ -n "$worktree_path" ] || continue
+      candidate="$(state_file_in_workspace "$worktree_path" "$change")"
+      if [ -f "$candidate" ]; then
+        best_file="$(preferred_state_file "$best_file" "$candidate")"
+      fi
+    done < <(git worktree list --porcelain 2>/dev/null | awk '/^worktree / { sub(/^worktree /, ""); print }')
+  fi
+
+  if [ -n "$best_file" ]; then
+    printf '%s\n' "$best_file"
+  else
+    printf '%s\n' "$current_file"
+  fi
 }
 
 enum_contains() {
@@ -170,6 +295,7 @@ workspace: undecided
 origin_branch: unknown
 origin_workspace_path: unknown
 origin_workspace_mode: unknown
+implementation_workspace_path: unknown
 plan: null
 handoff_context: null
 handoff_purpose: null
@@ -189,7 +315,7 @@ cmd_get() {
   local key="$2"
   valid_change "$change"
   local file
-  file="$(state_file "$change")"
+  file="$(resolve_state_file "$change")"
   [ -f "$file" ] || die "state not found: $file"
   field_value "$file" "$key"
 }
@@ -200,11 +326,11 @@ cmd_set() {
   local value="$3"
   valid_change "$change"
   local file
-  file="$(state_file "$change")"
+  file="$(resolve_state_file "$change")"
   [ -f "$file" ] || die "state not found: $file"
 
   case "$key" in
-    phase|ambiguity|complexity|implementation_path|execution_method|workspace|origin_branch|origin_workspace_path|origin_workspace_mode|plan|handoff_context|handoff_purpose|handoff_summary|handoff_hash|touched_files_b64|review_result|archive|updated_at)
+    phase|ambiguity|complexity|implementation_path|execution_method|workspace|origin_branch|origin_workspace_path|origin_workspace_mode|implementation_workspace_path|plan|handoff_context|handoff_purpose|handoff_summary|handoff_hash|touched_files_b64|review_result|archive|updated_at)
       ;;
     *)
       die "unsupported field: $key"
@@ -227,12 +353,12 @@ cmd_recover() {
   local change="$1"
   valid_change "$change"
   local file
-  file="$(state_file "$change")"
+  file="$(resolve_state_file "$change")"
   [ -f "$file" ] || die "state not found: $file"
 
   echo "OneSpec 恢复状态"
   echo "change: $change"
-  for key in phase ambiguity complexity implementation_path execution_method workspace origin_branch origin_workspace_path origin_workspace_mode plan handoff_context handoff_purpose handoff_summary handoff_hash review_result archive updated_at; do
+  for key in phase ambiguity complexity implementation_path execution_method workspace origin_branch origin_workspace_path origin_workspace_mode implementation_workspace_path plan handoff_context handoff_purpose handoff_summary handoff_hash review_result archive updated_at; do
     printf '%s: %s\n' "$key" "$(field_value "$file" "$key")"
   done
   local phase next_skill next_reference next_gate allowed_actions next_step
@@ -297,6 +423,12 @@ cmd_recover() {
   printf '下一步: %s\n' "$next_step"
 }
 
+cmd_path() {
+  local change="$1"
+  valid_change "$change"
+  resolve_state_file "$change"
+}
+
 cmd_list() {
   if [ ! -d openspec/changes ]; then
     return 0
@@ -308,6 +440,7 @@ usage() {
   cat <<'EOF'
 用法:
   onespec-state.sh init <change>
+  onespec-state.sh path <change>
   onespec-state.sh get <change> <field>
   onespec-state.sh set <change> <field> <value>
   onespec-state.sh recover <change>
@@ -320,6 +453,10 @@ case "$cmd" in
   init)
     [ "$#" -eq 2 ] || { usage; exit 2; }
     cmd_init "$2"
+    ;;
+  path)
+    [ "$#" -eq 2 ] || { usage; exit 2; }
+    cmd_path "$2"
     ;;
   get)
     [ "$#" -eq 3 ] || { usage; exit 2; }

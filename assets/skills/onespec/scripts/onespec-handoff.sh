@@ -30,6 +30,18 @@ json_escape() {
   sed 's/\\/\\\\/g; s/"/\\"/g' <<<"$1"
 }
 
+display_path() {
+  local file="$1"
+  case "$file" in
+    */openspec/*)
+      printf 'openspec/%s\n' "${file##*/openspec/}"
+      ;;
+    *)
+      printf '%s\n' "$file"
+      ;;
+  esac
+}
+
 valid_change() {
   local change="$1"
   [[ -n "$change" ]] || die "change name is required"
@@ -57,7 +69,7 @@ summary_text() {
   files="$(source_files)"
   count="$(printf '%s\n' "$files" | sed '/^$/d' | wc -l | tr -d ' ')"
   first="$(printf '%s\n' "$files" | sed -n '1p')"
-  printf '%s handoff from %s file(s); primary artifact: %s' "$purpose" "$count" "$first"
+  printf '%s handoff from %s file(s); primary artifact: %s' "$purpose" "$count" "$(display_path "$first")"
 }
 
 write_excerpt() {
@@ -95,9 +107,11 @@ case "$purpose" in proposal|plan|review|archive) ;; *) die "purpose must be prop
 case "$full_flag" in "" ) mode="compact" ;; "--full" ) mode="full" ;; * ) die "unknown option: $full_flag" ;; esac
 
 change_dir="openspec/changes/$change"
-state="$change_dir/.onespec.yaml"
-[ -d "$change_dir" ] || die "change directory not found: $change_dir"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
+state="$("${BASH:-bash}" "$script_dir/onespec-state.sh" path "$change")"
 [ -f "$state" ] || die "state file not found: $state"
+change_dir="$(cd "$(dirname "$state")" && pwd -P)"
+state_label="$(display_path "$state")"
 
 if [ "$(source_files | wc -l | tr -d ' ')" -eq 0 ]; then
   die "no OpenSpec artifacts found under $change_dir"
@@ -106,10 +120,9 @@ fi
 hash="$(context_hash)"
 summary="$(summary_text)"
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
-"${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_context "$state"
+"${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_context "$state_label"
 "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_purpose "$purpose"
 "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_summary "$summary"
 "${BASH:-bash}" "$script_dir/onespec-state.sh" set "$change" handoff_hash "$hash"
 
-echo "$state"
+echo "$state_label"

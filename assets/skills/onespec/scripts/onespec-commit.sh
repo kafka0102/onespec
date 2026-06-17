@@ -26,7 +26,9 @@ change_dir() {
 
 state_file() {
   local change="$1"
-  printf '%s/.onespec.yaml\n' "$(change_dir "$change")"
+  local script_root
+  script_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
+  "${BASH:-bash}" "$script_root/onespec-state.sh" path "$change"
 }
 
 normalize_path() {

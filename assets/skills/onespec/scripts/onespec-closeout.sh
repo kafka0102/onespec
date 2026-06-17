@@ -26,7 +26,9 @@ change_dir() {
 
 state_file() {
   local change="$1"
-  printf '%s/.onespec.yaml\n' "$(change_dir "$change")"
+  local script_root
+  script_root="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
+  "${BASH:-bash}" "$script_root/onespec-state.sh" path "$change"
 }
 
 field_value() {
@@ -60,6 +62,14 @@ current_branch() {
 
 current_workspace_path() {
   pwd -P
+}
+
+state_workspace_path() {
+  local change="$1"
+  local state
+  state="$(state_file "$change")"
+  [ -f "$state" ] || die "state not found: $state"
+  cd "$(dirname "$state")/../../.." && pwd -P
 }
 
 script_dir() {
@@ -123,8 +133,9 @@ temporary_worktree_status() {
   origin_path="$(get_state_value "$change" origin_workspace_path)"
   origin_mode="$(get_state_value "$change" origin_workspace_mode)"
   origin_path="$(canonicalize_path "$origin_path")"
-  current_path="$(current_workspace_path)"
-  current_head="$(current_branch)"
+  current_path="$(state_workspace_path "$change")"
+  current_head="$(git -C "$current_path" branch --show-current 2>/dev/null || true)"
+  current_head="${current_head:-detached}"
   temporary="false"
   reason="none"
 
@@ -492,11 +503,19 @@ cmd_cleanup_runtime() {
   local change="$1"
   valid_change "$change"
 
-  local file
+  local file display
   file="$(state_file "$change")"
   if [ -f "$file" ]; then
     rm -f "$file"
-    echo "$file"
+    case "$file" in
+      */openspec/*)
+        display="openspec/${file##*/openspec/}"
+        ;;
+      *)
+        display="$file"
+        ;;
+    esac
+    echo "$display"
   fi
 }
 

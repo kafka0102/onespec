@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -10,6 +10,10 @@ const execFileAsync = promisify(execFile);
 
 async function tmpProject() {
   return mkdtemp(path.join(os.tmpdir(), 'onespec-state-'));
+}
+
+async function git(cwd, args) {
+  return execFileAsync('git', args, { cwd });
 }
 
 test('onespec-state initializes, updates, and recovers change state', async () => {
@@ -175,4 +179,85 @@ test('onespec-state review recovery tells the user how to enter closeout', async
   assert.match(recovery, /next_reference: references\/archive\.md/);
   assert.match(recovery, /next_gate: user-review-closeout/);
   assert.match(recovery, /allowed_actions: request-changes,choose-closeout-action,direct-instruction/);
+});
+
+test('onespec-state resolves to the implementation worktree state when origin workspace is stale', async () => {
+  const projectPath = await tmpProject();
+  const worktreePath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+
+  await git(projectPath, ['init', '-b', 'main']);
+  await git(projectPath, ['config', 'user.email', 'test@example.com']);
+  await git(projectPath, ['config', 'user.name', 'OneSpec Test']);
+  await writeFile(path.join(projectPath, 'README.md'), '# Test\n');
+  await git(projectPath, ['add', 'README.md']);
+  await git(projectPath, ['commit', '-m', 'init']);
+
+  await mkdir(path.join(projectPath, 'openspec', 'changes', 'ship-login'), { recursive: true });
+  await execFileAsync('bash', [scriptPath, 'init', 'ship-login'], { cwd: projectPath });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'proposal-ready'], {
+    cwd: projectPath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'approved'], {
+    cwd: projectPath,
+  });
+  await execFileAsync(
+    'bash',
+    [scriptPath, 'set', 'ship-login', 'implementation_workspace_path', worktreePath],
+    { cwd: projectPath },
+  );
+  await git(projectPath, ['add', 'openspec/changes/ship-login/.onespec.yaml']);
+  await git(projectPath, ['commit', '-m', 'seed state']);
+
+  await git(projectPath, ['worktree', 'add', '-b', 'feature/ship-login', worktreePath, 'HEAD']);
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'plan-ready'], {
+    cwd: worktreePath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'implementing'], {
+    cwd: worktreePath,
+  });
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'phase', 'review'], {
+    cwd: worktreePath,
+  });
+
+  const { stdout: phaseFromOrigin } = await execFileAsync(
+    'bash',
+    [scriptPath, 'get', 'ship-login', 'phase'],
+    { cwd: projectPath },
+  );
+  const { stdout: recoveryFromOrigin } = await execFileAsync(
+    'bash',
+    [scriptPath, 'recover', 'ship-login'],
+    { cwd: projectPath },
+  );
+  const { stdout: pathFromOrigin } = await execFileAsync(
+    'bash',
+    [scriptPath, 'path', 'ship-login'],
+    { cwd: projectPath },
+  );
+
+  assert.equal(phaseFromOrigin.trim(), 'review');
+  assert.match(recoveryFromOrigin, /phase: review/);
+  assert.equal(
+    pathFromOrigin.trim(),
+    path.join(await realpath(worktreePath), 'openspec', 'changes', 'ship-login', '.onespec.yaml'),
+  );
+
+  await execFileAsync('bash', [scriptPath, 'set', 'ship-login', 'archive', 'archived'], {
+    cwd: projectPath,
+  });
+
+  const worktreeState = await readFile(
+    path.join(worktreePath, 'openspec', 'changes', 'ship-login', '.onespec.yaml'),
+    'utf8',
+  );
+  const originState = await readFile(
+    path.join(projectPath, 'openspec', 'changes', 'ship-login', '.onespec.yaml'),
+    'utf8',
+  );
+
+  assert.match(worktreeState, /phase: review/);
+  assert.match(worktreeState, /archive: archived/);
+  assert.match(originState, /phase: approved/);
+  assert.match(originState, new RegExp(`implementation_workspace_path: ${worktreePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
 });
