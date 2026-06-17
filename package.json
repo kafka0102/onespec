@@ -1,6 +1,6 @@
 {
   "name": "@kafka0102/onespec",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "OpenSpec + Superpowers workflow skill installer for mainstream SKILL.md agents",
   "repository": {
     "type": "git",
