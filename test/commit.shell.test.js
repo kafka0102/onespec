@@ -96,10 +96,57 @@ test('onespec-commit detects project commit policy before falling back to defaul
   assert.match(stdout, /policy_source: docs\/standards\/shared\/git-workflow.md/);
   assert.match(stdout, /policy_origin: project-doc/);
   assert.match(stdout, /policy_confidence: explicit/);
-  assert.match(stdout, /commit_format: conventional/);
+  assert.match(stdout, /commit_format: conventional-scope/);
+  assert.match(stdout, /scope_mode: required/);
   assert.match(stdout, /message_language: zh/);
   assert.match(stdout, /repo_layout: multi/);
   assert.match(stdout, /scope_hint: web/);
+  assert.match(stdout, /template: <type>\(<scope>\): <summary>/);
+});
+
+test('onespec-commit detects no-scope Chinese commit policy from AGENTS or CLAUDE files in the target project', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
+
+  await mkdir(path.join(projectPath, 'src'), { recursive: true });
+  await writeFile(
+    path.join(projectPath, 'AGENTS.md'),
+    [
+      '# Repo Rules',
+      '',
+      '提交标题格式必须为：',
+      '',
+      '<type>: <简要描述>',
+      '',
+      '描述使用简体中文。',
+      '',
+    ].join('\n'),
+  );
+  await writeFile(
+    path.join(projectPath, 'CLAUDE.md'),
+    [
+      '# Claude Rules',
+      '',
+      'commit message should follow conventional commit format.',
+      '',
+    ].join('\n'),
+  );
+
+  await initChangeState(projectPath, 'add-login');
+  await execFileAsync('bash', [scriptPath, 'track', 'add-login', 'src/index.ts'], {
+    cwd: projectPath,
+  });
+
+  const { stdout } = await execFileAsync('bash', [scriptPath, 'detect-policy', 'add-login'], {
+    cwd: projectPath,
+  });
+
+  assert.match(stdout, /policy_source: AGENTS.md/);
+  assert.match(stdout, /policy_origin: project-doc/);
+  assert.match(stdout, /commit_format: conventional/);
+  assert.match(stdout, /scope_mode: optional/);
+  assert.match(stdout, /message_language: zh/);
+  assert.match(stdout, /template: <type>: <summary>/);
 });
 
 test('onespec-commit includes dirty change artifacts under openspec change directories', async () => {
@@ -185,4 +232,47 @@ test('onespec-commit auto-commits related dirty files with a detected convention
   assert.match(stdout, /commit_message: chore\(web\): 提交 add-login 收尾前改动/);
   assert.equal(subject.trim(), 'chore(web): 提交 add-login 收尾前改动');
   assert.equal(status.trim(), '?? notes.txt');
+});
+
+test('onespec-commit omits scope when the target project policy requires type-colon Chinese titles', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-commit.sh');
+
+  await mkdir(path.join(projectPath, 'src'), { recursive: true });
+  await mkdir(path.join(projectPath, 'docs', 'standards', 'shared'), { recursive: true });
+  await writeFile(
+    path.join(projectPath, 'docs', 'standards', 'shared', 'git-workflow.md'),
+    [
+      '# Git 工作流规范',
+      '',
+      '提交标题格式必须为：',
+      '',
+      '<type>: <简要描述>',
+      '',
+      '描述使用简体中文。',
+      '',
+    ].join('\n'),
+  );
+  await writeFile(path.join(projectPath, 'src', 'app.ts'), 'export const value = 1;\n');
+
+  await git(projectPath, ['init']);
+  await git(projectPath, ['config', 'user.name', 'Test User']);
+  await git(projectPath, ['config', 'user.email', 'test@example.com']);
+  await git(projectPath, ['add', '.']);
+  await git(projectPath, ['commit', '-m', 'init']);
+  await initChangeState(projectPath, 'ship-login');
+
+  await execFileAsync('bash', [scriptPath, 'track', 'ship-login', 'src/app.ts'], {
+    cwd: projectPath,
+  });
+  await writeFile(path.join(projectPath, 'src', 'app.ts'), 'export const value = 2;\n');
+
+  const { stdout } = await execFileAsync('bash', [scriptPath, 'commit-related', 'ship-login', 'closeout'], {
+    cwd: projectPath,
+  });
+  const { stdout: subject } = await git(projectPath, ['log', '-1', '--pretty=%s']);
+
+  assert.match(stdout, /commit_created: true/);
+  assert.match(stdout, /commit_message: chore: 提交 ship-login 收尾前改动/);
+  assert.equal(subject.trim(), 'chore: 提交 ship-login 收尾前改动');
 });

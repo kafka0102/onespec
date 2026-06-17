@@ -157,7 +157,20 @@ find_policy_doc() {
   local pattern='提交|commit message|commit messages|提交信息|提交规范|提交格式|conventional commit|conventional commits|git workflow|commitlint|commitizen'
   local file
 
-  for file in AGENTS.md CONTRIBUTING.md CONTRIBUTING.zh-CN.md README.md README-zh.md README.en.md; do
+  for file in \
+    AGENTS.md \
+    agents.md \
+    .agents.md \
+    CLAUDE.md \
+    claude.md \
+    .claude.md \
+    CONTRIBUTING.md \
+    CONTRIBUTING.zh-CN.md \
+    README.md \
+    README-zh.md \
+    README.en.md \
+    README.zh-CN.md
+  do
     if [ -f "$file" ] && grep -Eiq "$pattern" "$file"; then
       printf '%s\n' "$file"
       return 0
@@ -227,11 +240,33 @@ detect_language_from_doc() {
 detect_format_from_file() {
   local file="$1"
 
-  if grep -Eiq '<type>\(<scope>\):|conventional commit|conventional commits|commitlint|type\(scope\)' "$file"; then
+  if grep -Eiq '<type>\(<scope>\):|type\(scope\)' "$file"; then
+    echo "conventional-scope"
+    return 0
+  fi
+  if grep -Eiq '<type>:[[:space:]]*<|^```text$|^```$' "$file" && grep -Eiq '<type>:[[:space:]]*<' "$file"; then
+    echo "conventional"
+    return 0
+  fi
+  if grep -Eiq 'conventional commit|conventional commits|commitlint' "$file"; then
     echo "conventional"
     return 0
   fi
   echo "unknown"
+}
+
+scope_mode_for_format() {
+  case "$1" in
+    conventional-scope)
+      echo "required"
+      ;;
+    conventional)
+      echo "optional"
+      ;;
+    *)
+      echo "optional"
+      ;;
+  esac
 }
 
 infer_scope() {
@@ -334,21 +369,31 @@ default_commit_summary() {
 build_commit_message() {
   local change="$1"
   local context="$2"
-  local policy language scope summary
+  local policy language scope summary format scope_mode type
 
   valid_commit_context "$context"
   policy="$(cmd_detect_policy "$change")"
   language="$(policy_value "$policy" message_language)"
   scope="$(policy_value "$policy" scope_hint)"
+  format="$(policy_value "$policy" commit_format)"
+  scope_mode="$(policy_value "$policy" scope_mode)"
   [ -n "$language" ] || language="en"
   [ -n "$scope" ] || scope="repo"
+  [ -n "$format" ] || format="conventional-scope"
+  [ -n "$scope_mode" ] || scope_mode="optional"
+  type="chore"
   case "$context" in
     archive|preserve-state)
       scope="docs"
       ;;
   esac
   summary="$(default_commit_summary "$change" "$context" "$language")"
-  printf 'chore(%s): %s\n' "$scope" "$summary"
+
+  if [ "$scope_mode" = "required" ]; then
+    printf '%s(%s): %s\n' "$type" "$scope" "$summary"
+  else
+    printf '%s: %s\n' "$type" "$summary"
+  fi
 }
 
 has_staged_changes() {
@@ -437,22 +482,24 @@ cmd_stage_related() {
 
 cmd_detect_policy() {
   local change="${1:-}"
-  local layout source origin format language confidence scope
+  local layout source origin format language confidence scope scope_mode template
 
   layout="$(repo_layout)"
   scope="$(infer_scope "$change")"
   confidence="default"
   origin="default"
   source="default"
-  format="conventional"
+  format="conventional-scope"
   language="en"
+  scope_mode="optional"
+  template="<type>(<scope>): <summary>"
 
   if source="$(find_policy_doc)"; then
     origin="project-doc"
     confidence="explicit"
     format="$(detect_format_from_file "$source")"
     language="$(detect_language_from_doc "$source")"
-    [ "$format" != "unknown" ] || format="conventional"
+    [ "$format" != "unknown" ] || format="conventional-scope"
     [ "$language" != "unknown" ] || language="en"
   else
     local config_source
@@ -460,20 +507,31 @@ cmd_detect_policy() {
       source="$config_source"
       origin="project-config"
       confidence="partial"
-      format="conventional"
+      format="conventional-scope"
       language="en"
     fi
   fi
+
+  scope_mode="$(scope_mode_for_format "$format")"
+  case "$format" in
+    conventional-scope)
+      template="<type>(<scope>): <summary>"
+      ;;
+    conventional)
+      template="<type>: <summary>"
+      ;;
+  esac
 
   cat <<EOF
 policy_source: $source
 policy_origin: $origin
 policy_confidence: $confidence
 commit_format: $format
+scope_mode: $scope_mode
 message_language: $language
 repo_layout: $layout
 scope_hint: $scope
-template: <type>(<scope>): <summary>
+template: $template
 EOF
 }
 
