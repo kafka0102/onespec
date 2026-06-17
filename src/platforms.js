@@ -21,7 +21,7 @@ export const PLATFORMS = {
     projectSkillsDir: path.join('.claude', 'skills'),
     globalSkillsDir: path.join(claudeHome, 'skills'),
     discoveryRoots: [],
-    openspecToolId: 'claude-code',
+    openspecToolId: 'claude',
   },
   cursor: {
     id: 'cursor',
@@ -37,7 +37,7 @@ export const PLATFORMS = {
     projectSkillsDir: path.join('.agents', 'skills'),
     globalSkillsDir: path.join(home, '.gemini', 'skills'),
     discoveryRoots: [path.join(home, '.agents', 'skills')],
-    openspecToolId: 'gemini-cli',
+    openspecToolId: 'gemini',
   },
   'github-copilot': {
     id: 'github-copilot',

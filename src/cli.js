@@ -1,11 +1,10 @@
 import path from 'node:path';
-import readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
 import { readFile } from 'node:fs/promises';
+import { checkbox, select, confirm } from '@inquirer/prompts';
 
 import { doctorProject } from './doctor.js';
 import { SUPPORTED_LANGUAGES } from './init.js';
-import { getPlatform } from './platforms.js';
+import { getPlatform, PLATFORMS } from './platforms.js';
 import {
   detectExistingOneSpecPlatforms,
   detectPlatforms,
@@ -62,8 +61,57 @@ function parseArgs(argv) {
   return { command, options };
 }
 
-function normalizeYesNo(value) {
-  return ['y', 'yes', '是', '覆盖'].includes(value.trim().toLowerCase());
+async function selectScope(options) {
+  if (options.scope) return options.scope;
+  if (options.yes) return 'project';
+
+  return select({
+    message: 'Install scope:',
+    choices: [
+      { name: 'Project (current directory)', value: 'project' },
+      { name: 'Global (home directory)', value: 'global' },
+    ],
+  });
+}
+
+async function selectLanguage(options) {
+  if (options.yes) return 'zh';
+
+  const langId = await select({
+    message: 'Language for OneSpec skills:',
+    choices: Object.entries(SUPPORTED_LANGUAGES).map(([id, lang]) => ({ name: lang.name, value: id })),
+  });
+
+  return langId;
+}
+
+async function selectPlatforms(detected, options) {
+  const choices = SUPPORTED_PLATFORM_IDS.map((platformId) => {
+    const platform = getPlatform(platformId);
+    return {
+      name: `${platform.name}${detected.has(platformId) ? ' (detected)' : ''}`,
+      value: platformId,
+      checked: detected.has(platformId),
+    };
+  });
+
+  if (options.yes) {
+    const selected = [...detected];
+    return selected.length > 0 ? selected : ['codex'];
+  }
+
+  return checkbox({ message: 'Select platforms to set up:', choices, required: true });
+}
+
+async function askOverwrite(existingPlatforms, options) {
+  if (options.overwrite || existingPlatforms.length === 0) {
+    return options.overwrite;
+  }
+
+  return confirm({
+    message: `OneSpec skills already exist for ${existingPlatforms.join(', ')}. Overwrite existing items?`,
+    default: false,
+  });
 }
 
 async function askInitOptions(options) {
@@ -80,79 +128,24 @@ async function askInitOptions(options) {
     };
   }
 
-  const rl = readline.createInterface({ input, output });
-  try {
-    if (explicitPlatforms.length === 0) {
-      console.log('可选 AI 平台：');
-      for (const [index, platformId] of SUPPORTED_PLATFORM_IDS.entries()) {
-        const platform = getPlatform(platformId);
-        const detectedSuffix = detectedPlatforms.includes(platformId) ? ' [detected]' : '';
-        console.log(`  ${index + 1}. ${platform.name} (${platform.id})${detectedSuffix}`);
-      }
-      console.log('');
-    }
+  const detectedSet = new Set(detectedPlatforms);
+  const selectedPlatforms = explicitPlatforms.length > 0 ? explicitPlatforms : await selectPlatforms(detectedSet, options);
+  const resolvedScope = await selectScope(options);
+  const language = await selectLanguage(options);
+  const existingPlatforms = await detectExistingOneSpecPlatforms(
+    options.targetPath,
+    resolvedScope,
+    selectedPlatforms,
+  );
+  const overwrite = await askOverwrite(existingPlatforms, options);
 
-    const platformAnswer =
-      explicitPlatforms.length > 0
-        ? explicitPlatforms.join(',')
-        : await rl.question(
-            `安装到哪些 AI 平台？输入编号或 id，逗号分隔（默认 ${defaultPlatforms.join(',')}）：`,
-          );
-    const selectedPlatforms = resolvePlatformSelection(platformAnswer, defaultPlatforms);
-    const scopeAnswer =
-      options.scope ??
-      (await rl.question('安装范围？输入 project 或 global（默认 project）：'));
-    const resolvedScope = scopeAnswer.trim() || 'project';
-    const languageAnswer =
-      options.language ??
-      (await rl.question('Skill 语言？输入 zh 或 en（默认 zh）：'));
-    const existingPlatforms = await detectExistingOneSpecPlatforms(
-      options.targetPath,
-      resolvedScope,
-      selectedPlatforms,
-    );
-    const overwriteAnswer =
-      options.overwrite || existingPlatforms.length === 0
-        ? 'no'
-        : await rl.question(
-            `检测到这些平台已存在 OneSpec skill：${existingPlatforms.join(', ')}。是否覆盖已存在项？输入 yes 或 no（默认 no）：`,
-          );
-
-    return {
-      ...options,
-      platforms: selectedPlatforms,
-      scope: resolvedScope,
-      language: languageAnswer.trim() || 'zh',
-      overwrite: options.overwrite || normalizeYesNo(overwriteAnswer),
-    };
-  } finally {
-    rl.close();
-  }
-}
-
-function resolvePlatformSelection(answer, defaultPlatforms) {
-  const trimmed = answer.trim();
-  if (!trimmed) {
-    return defaultPlatforms;
-  }
-
-  const numbered = trimmed
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((value) => {
-      if (!/^\d+$/.test(value)) {
-        return value;
-      }
-
-      const index = Number.parseInt(value, 10) - 1;
-      if (index < 0 || index >= SUPPORTED_PLATFORM_IDS.length) {
-        throw new Error(`Unsupported platform selection: ${value}`);
-      }
-      return SUPPORTED_PLATFORM_IDS[index];
-    });
-
-  return parsePlatformList(numbered);
+  return {
+    ...options,
+    platforms: selectedPlatforms,
+    scope: resolvedScope,
+    language,
+    overwrite,
+  };
 }
 
 function printHelp() {

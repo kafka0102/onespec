@@ -335,7 +335,7 @@ test('buildOpenSpecInitCommand targets selected platforms and scope', async () =
 
   assert.equal(command.command, 'openspec');
   assert.deepEqual(command.args, ['init', '/tmp/project', '--tools', 'codex,cursor']);
-  assert.deepEqual(globalCommand.args, ['init', '/tmp/home', '--tools', 'claude-code']);
+  assert.deepEqual(globalCommand.args, ['init', '/tmp/home', '--tools', 'claude']);
 });
 
 test('buildSuperpowersInstallCommand uses repeated agent flags', async () => {
@@ -410,7 +410,7 @@ test('initWorkspace installs missing OpenSpec CLI before initializing workspace'
   });
   assert.deepEqual(commands[1], {
     command: 'openspec',
-    args: ['init', '/tmp/onespec-home', '--tools', 'claude-code'],
+    args: ['init', '/tmp/onespec-home', '--tools', 'claude'],
     cwd: projectPath,
   });
   assert.deepEqual(commands[2], {

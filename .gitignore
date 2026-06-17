@@ -2,3 +2,4 @@
 !.github/workflows/
 !.github/workflows/**
 skills-lock.json
+node_modules
