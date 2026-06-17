@@ -27,7 +27,7 @@ jobs:
       - name: Verify tag matches package version
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          PACKAGE_VERSION="$(node -p "import('./package.json', { with: { type: 'json' } }).then(m => m.default.version)")"
           if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
             echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)." >&2
             exit 1
@@ -40,4 +40,11 @@ jobs:
         run: npm pack --dry-run
 
       - name: Publish package with trusted publishing
+        if: ${{ secrets.NPM_TOKEN == '' }}
         run: npm publish --provenance --access public
+
+      - name: Publish package with npm token fallback
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
