@@ -271,7 +271,11 @@ cmd_validate_actions() {
   elif [ "$has_discard_worktree" = "true" ]; then
     message="允许删除临时 worktree 并废弃对应本地分支代码；废弃后不归档。"
   elif [ "$has_archive_only" = "true" ]; then
-    message="允许直接归档当前 change，不合并到 base 分支，也不自动删除当前 worktree。"
+    if [ "$temporary" != "true" ] && [ "$current_head" = "$origin_branch" ] && { [ "$current_head" = "main" ] || [ "$current_head" = "master" ]; }; then
+      message="允许直接归档当前 change；当前已经在 ${current_head}，无需额外合并分支，也不自动删除当前工作区。"
+    else
+      message="允许直接归档当前 change，不合并到 base 分支，也不自动删除当前 worktree。"
+    fi
   elif [ "${#selected[@]}" -eq 0 ]; then
     message="本次保持当前评审阶段不变；之后仍可再次进入收尾。"
   fi

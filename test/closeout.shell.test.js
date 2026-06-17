@@ -183,7 +183,8 @@ test('onespec-closeout validate-actions allows archive-only on target branch and
 
   assert.match(invalid.stdout, /selected_actions: archive-only/);
   assert.match(invalid.stdout, /valid: true/);
-  assert.match(invalid.stdout, /允许直接归档当前 change，不合并到 base 分支，也不自动删除当前 worktree。/);
+  assert.match(invalid.stdout, /允许直接归档当前 change；当前已经在 main，无需额外合并分支，也不自动删除当前工作区。/);
+  assert.doesNotMatch(invalid.stdout, /base 分支/);
   assert.match(recommended.stdout, /temporary_worktree: false/);
   assert.match(recommended.stdout, /recommended_actions: archive-only/);
 });
@@ -213,6 +214,30 @@ test('onespec-closeout inspect recommends archive-only on master without tempora
   assert.match(stdout, /temporary_worktree: false/);
   assert.match(stdout, /recommended_actions: archive-only/);
   assert.match(stdout, /recommended_reason: already-on-target-path/);
+});
+
+test('onespec-closeout validate-actions avoids base-branch wording on master target branch', async () => {
+  const projectPath = await tmpProject();
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+
+  await initGitRepo(projectPath);
+  await execFileAsync('git', ['branch', '-m', 'master'], { cwd: projectPath });
+  await initChangeState(projectPath, 'archive-master', {
+    origin_branch: 'master',
+    origin_workspace_path: projectPath,
+    origin_workspace_mode: 'current-branch',
+  });
+
+  const { stdout } = await execFileAsync(
+    'bash',
+    [closeoutScriptPath, 'validate-actions', 'archive-master', 'archive-only'],
+    { cwd: projectPath },
+  );
+
+  assert.match(stdout, /selected_actions: archive-only/);
+  assert.match(stdout, /valid: true/);
+  assert.match(stdout, /允许直接归档当前 change；当前已经在 master，无需额外合并分支，也不自动删除当前工作区。/);
+  assert.doesNotMatch(stdout, /base 分支/);
 });
 
 test('onespec-closeout validate-actions allows archive-only inside a temporary worktree', async () => {

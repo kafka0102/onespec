@@ -241,7 +241,7 @@ git -C "$implementation_workspace_path" status --short
 📍 当前工作区: `<path>`
 📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
 
-1. 直接归档，不合并到 base 分支
+1. 直接归档（当前已在 `main/master`，无需额外合并分支）
 其他：任意非编号内容视为继续修改当前实现；用户未输入时默认停留在当前评审阶段
 ---
 ```
