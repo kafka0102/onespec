@@ -28,7 +28,7 @@ jobs:
       - name: Verify tag matches package version
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PACKAGE_VERSION="$(node -p "import('./package.json', { with: { type: 'json' } }).then(m => m.default.version)")"
+          PACKAGE_VERSION="$(node --input-type=commonjs -p "JSON.parse(require('fs').readFileSync('./package.json', 'utf8')).version")"
           if [ "$TAG_VERSION" != "$PACKAGE_VERSION" ]; then
             echo "Tag version ($TAG_VERSION) does not match package.json version ($PACKAGE_VERSION)." >&2
             exit 1
