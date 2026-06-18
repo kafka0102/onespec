@@ -24,7 +24,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 - 仅在用户明确要求 `onespec-fast`、快速路径、fast apply、OpenSpec 自动 proposal/开发/归档或自动贯通时使用。
 - 不要询问 change 名称。根据任务自动生成简短短横线命名的 `change-id`，如冲突则追加数字。
-- 读取最少必要上下文：`openspec/config.yaml`、`openspec/project.md`、相关 `openspec/specs/**`、项目入口文档、当前分支和工作区状态。
+- 读取最少必要上下文：`openspec/config.yaml`、相关 `openspec/specs/**`、项目入口文档、当前分支和工作区状态。
 - 只有 OpenSpec 必需上下文缺失到无法写出有效 proposal、或项目文档明确禁止自动修改当前分支时才暂停。
 
 ## 2. 直接 Proposal

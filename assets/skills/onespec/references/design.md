@@ -22,7 +22,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 读取最少必要上下文：
 
-- `openspec/config.yaml`、`openspec/project.md`、`openspec/specs/**` 中与任务相关的部分
+- `openspec/config.yaml`、`openspec/specs/**` 中与任务相关的部分
 - 项目入口文档，如 `AGENTS.md`、`README.md`、`docs/**` 中与任务相关的部分
 - 当前分支和工作区状态
 

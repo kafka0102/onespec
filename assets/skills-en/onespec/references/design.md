@@ -22,7 +22,7 @@ Treat `recover` output as the current phase contract, not as reference informati
 
 Read the minimum necessary context:
 
-- Relevant parts of `openspec/config.yaml`, `openspec/project.md`, and `openspec/specs/**`
+- Relevant parts of `openspec/config.yaml` and `openspec/specs/**`
 - Relevant project entry docs such as `AGENTS.md`, `README.md`, or `docs/**`
 - Current branch and workspace state
 

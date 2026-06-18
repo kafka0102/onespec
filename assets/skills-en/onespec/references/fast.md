@@ -24,7 +24,7 @@ Use rules:
 
 - Use only when the user explicitly asks for `onespec-fast`, the fast path, fast apply, automatic OpenSpec proposal/implementation/archive, or automatic end-to-end execution.
 - Do not ask the user to name the change. Generate a short kebab-case `change-id`; append a numeric suffix if needed.
-- Read the minimum needed context: `openspec/config.yaml`, `openspec/project.md`, relevant `openspec/specs/**`, project entry docs, current branch, and workspace state.
+- Read the minimum needed context: `openspec/config.yaml`, relevant `openspec/specs/**`, project entry docs, current branch, and workspace state.
 - Pause only when required OpenSpec context is too incomplete to produce a valid proposal, or project docs explicitly forbid automatic edits on the current branch.
 
 ## 2. Direct Proposal
