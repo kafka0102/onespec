@@ -224,6 +224,31 @@ test('archive reference documents review closeout and archive guardrails', async
   }
 });
 
+test('interactive gates require explicit user choice prompts instead of implicit conclusions', async () => {
+  const design = await readReference('design.md');
+  const execute = await readReference('execute.md');
+  const archive = await readReference('archive.md');
+  const englishDesign = await readEnglishReference('design.md');
+  const englishExecute = await readEnglishReference('execute.md');
+  const englishArchive = await readEnglishReference('archive.md');
+
+  for (const content of [design, execute, archive]) {
+    expectIncludes(content, '用户确认请求');
+    expectIncludes(content, '必须把“需要用户选择”作为独立块输出');
+    expectIncludes(content, '请回复编号');
+    expectIncludes(content, '如果平台提供结构化询问能力');
+    assert.doesNotMatch(content, /把推荐意见混在结论里后直接结束/);
+  }
+
+  for (const content of [englishDesign, englishExecute, englishArchive]) {
+    expectIncludes(content, 'User Confirmation Request');
+    expectIncludes(content, 'render "user choice required" as a standalone block');
+    expectIncludes(content, 'Reply with a number');
+    expectIncludes(content, 'If the platform provides structured question UI');
+    assert.doesNotMatch(content, /bury the recommendation inside the conclusion and stop/i);
+  }
+});
+
 test('fast reference documents direct proposal, native apply, and archive', async () => {
   const reference = await readReference('fast.md');
 

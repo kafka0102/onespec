@@ -34,6 +34,19 @@ If state has not reached `review`, explain what is still missing: implementation
 
 Entry validation: if phase is already `review` but `.onespec.yaml` does not show `handoff_purpose: review` or does not have a `handoff_hash`, treat that as an incomplete execute gate. Tell the user the review handoff state was not written back and send them to re-run the execute report instead of silently continuing.
 
+### 1.1 User Confirmation Request Rules
+
+When archive phase requires the user to confirm archive, merge, discard-worktree, continued implementation, or staying in review, render "user choice required" as a standalone block titled `User Confirmation Request`. Do not mix current state, recommended closeout action, and pending confirmation into one paragraph.
+
+The confirmation block must include:
+
+- one explicit instruction: `Reply with a number.`
+- 1-3 numbered options, with item 1 usually marked as `Recommended`
+- `Other:` explaining how non-numbered content will be handled, usually as continued implementation work
+- if the user adds constraints but still has not made a clear choice, continue presenting updated numbered options until the user chooses, stops, or explicitly tells you to continue
+
+If the platform provides structured question UI such as `ask user questions`, `request_user_input`, or an equivalent mechanism, prefer that for these numbered options. If no such mechanism is available, render the `User Confirmation Request` block in the normal message. In either form, do not end with only a sentence like "archive is recommended" or "the next step is closeout."
+
 ## 2. User Review
 
 Let the user review the implementation. If they raise issues, continue editing and re-verify.

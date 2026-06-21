@@ -138,6 +138,19 @@ Always state:
   - `Superpowers + subagent + current worktree/current branch`
 - that the user may override the recommendation
 
+### 3.1 User Confirmation Request Rules
+
+When the result requires the user to decide whether to approve, start implementation, change the path, or stay in design, render "user choice required" as a standalone block titled `User Confirmation Request`. Do not mix the conclusion, recommendation, and pending confirmation into one paragraph.
+
+The confirmation block must include:
+
+- one explicit instruction: `Reply with a number.`
+- 2-4 numbered options, with item 1 usually marked as `Recommended`
+- `Other:` explaining that the user may add constraints or request an operation not listed
+- if the user adds constraints but still has not made a clear choice, continue presenting updated numbered options until the user chooses, stops, or explicitly tells you to continue
+
+If the platform provides structured question UI such as `ask user questions`, `request_user_input`, or an equivalent mechanism, prefer that for these numbered options. If no such mechanism is available, render the `User Confirmation Request` block in the normal message. In either form, do not end with only a sentence like "I recommend this path."
+
 ## 4. Proposal Approval Gate and Path Selection
 
 Default intent mapping, issue-workflow routing, or implementation recommendations do not count as proposal approval.

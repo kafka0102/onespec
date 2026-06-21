@@ -36,6 +36,19 @@ Default intent mapping:
 
 If the proposal is not approved yet, stop immediately.
 
+### 1.1 User Confirmation Request Rules
+
+When execution requires the user to confirm the implementation path, workspace policy, continued implementation, return to design revision, or post-completion closeout action, render "user choice required" as a standalone block titled `User Confirmation Request`. Do not mix conclusions, verification results, recommendations, and pending confirmation into one paragraph.
+
+The confirmation block must include:
+
+- one explicit instruction: `Reply with a number.`
+- 2-6 numbered options, with item 1 usually marked as `Recommended`
+- `Other:` explaining how non-numbered content will be handled, usually as continued implementation work or extra constraints
+- if the user adds constraints but still has not made a clear choice, continue presenting updated numbered options until the user chooses, stops, or explicitly tells you to continue
+
+If the platform provides structured question UI such as `ask user questions`, `request_user_input`, or an equivalent mechanism, prefer that for these numbered options. If no such mechanism is available, render the `User Confirmation Request` block in the normal message. In either form, do not end with only a sentence like "the next step is that phase" or "I recommend this path."
+
 If the proposal phase already confirmed the implementation path:
 
 - user chose `Superpowers`: continue into Superpowers Make Plan.
