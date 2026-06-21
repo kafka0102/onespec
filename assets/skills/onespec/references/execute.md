@@ -214,7 +214,15 @@ git -C "$implementation_workspace_path" status --short
 
 ### 5.3 下一步编号菜单模板
 
-汇报结尾必须包含以下格式的编号提示（可微调措辞，但结构和编号语义不可省略）：
+生成下一步菜单前，必须先用脚本探测当前收尾状态；不要凭分支名、路径命名或主观判断推断是否需要合并/删除 worktree：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" recommend-actions <change-id>
+```
+
+菜单必须按探测结果差异化生成：
+
+- 如果 `temporary_worktree: true`，说明当前实现位于临时 worktree。汇报结尾必须包含以下格式的编号提示（可微调措辞，但结构和编号语义不可省略）：
 
 ```
 ---
@@ -231,7 +239,7 @@ git -C "$implementation_workspace_path" status --short
 ---
 ```
 
-如果当前不在临时 worktree，且当前分支就是 `origin_branch`，并且该分支是 `main` 或 `master`，则不要提示“合并分支到 base 分支”或“删除当前临时 worktree”。此时收尾菜单必须收缩为仅归档一个选项：
+- 如果 `temporary_worktree: false`，说明当前实现已经在目标分支/目标工作区，不存在可合并回收的临时 worktree。无论该分支是否为 `main`/`master`，都不要提示“合并分支到 base 分支”或“删除当前临时 worktree”。此时收尾菜单必须收缩为仅归档一个选项：
 
 ```
 ---
@@ -241,18 +249,19 @@ git -C "$implementation_workspace_path" status --short
 📍 当前工作区: `<path>`
 📍 origin: `<origin_branch>` @ `<origin_workspace_path>`
 
-1. 直接归档（当前已在 `main/master`，无需额外合并分支）
+1. 直接归档（当前不在临时 worktree，无需额外合并分支或删除 worktree）
 其他：任意非编号内容视为继续修改当前实现；用户未输入时默认停留在当前评审阶段
 ---
 ```
 
-也就是说，`master/main` 分支就不要提示合并分支/删除 worktree。
+也就是说，不在临时 worktree 时，不管当前目标分支叫 `main`、`master`、`develop`、`feature/*` 还是其他名称，都不要提示合并分支/删除 worktree。
 
-如果当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree；若你直接回复非编号内容，我会按继续修改处理。"
+如果脚本探测到当前分支或工作区不同于 `origin_*`，还必须额外说明："当前实现位于临时分支或临时 worktree；若你直接回复非编号内容，我会按继续修改处理。"
 
-- 选择 `1` 时，archive phase 必须按“先归档，再合并分支到 base 分支”的固定顺序执行。
-- 选择 `2` 时，archive phase 只做归档，不合并分支，也不自动删除当前 worktree。
-- 选择 `3` 时，archive phase 删除当前临时 worktree 并废弃代码，不执行归档。
+- `temporary_worktree: true` 且选择 `1` 时，archive phase 必须按“先归档，再合并分支到 base 分支，最后删除临时 worktree”的固定顺序执行。
+- `temporary_worktree: true` 且选择 `2` 时，archive phase 只做归档，不合并分支，也不自动删除当前 worktree。
+- `temporary_worktree: true` 且选择 `3` 时，archive phase 删除当前临时 worktree 并废弃代码，不执行归档。
+- `temporary_worktree: false` 且选择 `1` 时，archive phase 只做归档；不得合并分支，不得删除工作区或 worktree。
 
 不要只停在“下一步应进入 archive phase”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户只需回复数字编号的选项。
 

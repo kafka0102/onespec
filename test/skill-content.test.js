@@ -162,7 +162,8 @@ test('execute reference documents apply, planning, and implementation guardrails
     '归档当前 change，并合并分支到 base 分支',
     '直接归档，不合并到 base 分支',
     '删除当前临时 worktree，废弃代码',
-    '`master/main` 分支就不要提示合并分支/删除 worktree',
+    'recommend-actions <change-id>',
+    '不在临时 worktree 时，不管当前目标分支叫 `main`、`master`、`develop`、`feature/*` 还是其他名称，都不要提示合并分支/删除 worktree',
     '用户未输入时默认停留在当前评审阶段',
     'openspec validate <change-id> --strict',
   ]) {
@@ -181,14 +182,15 @@ test('archive reference documents review closeout and archive guardrails', async
     '"$ONESPEC_BASH" "$ONESPEC_STATE" recover <change-id>',
     'Superpowers Worktree 优先规则',
     'origin_workspace_mode=worktree',
-    'worktree 收尾规则',
+    '差异化收尾规则',
     '`archive-then-merge-worktree`',
     '`archive-only`',
     '`discard-worktree`',
     '归档当前 change，并合并分支到 base 分支',
     '直接归档，不合并到 base 分支',
     '删除当前临时 worktree，废弃代码',
-    '`master/main` 分支就不要提示合并分支/删除 worktree',
+    'recommend-actions <change-id>',
+    '不在临时 worktree 时，不管当前目标分支叫 `main`、`master`、`develop`、`feature/*` 还是其他名称，都不要提示合并分支/删除 worktree',
     '当前分支名',
     'origin_branch',
     '临时实现分支或临时 worktree',
@@ -326,6 +328,10 @@ test('English overlays exist for public skills and references', async () => {
     await readEnglishReference('execute.md'),
     'Archive the current change, then merge the branch into the base branch',
   );
+  expectIncludes(
+    await readEnglishReference('execute.md'),
+    'when `temporary_worktree: false`, do not prompt for branch merge or worktree deletion on any target branch',
+  );
   expectIncludes(await readEnglishReference('execute.md'), 'Archive only, without merging');
   expectIncludes(
     await readEnglishReference('execute.md'),
@@ -334,6 +340,10 @@ test('English overlays exist for public skills and references', async () => {
   expectIncludes(
     await readEnglishReference('archive.md'),
     'Archive the current change, then merge the branch into the base branch',
+  );
+  expectIncludes(
+    await readEnglishReference('archive.md'),
+    'when `temporary_worktree: false`, do not prompt for branch merge or worktree deletion on any target branch',
   );
   expectIncludes(await readEnglishReference('archive.md'), 'Archive only, without merging');
   expectIncludes(

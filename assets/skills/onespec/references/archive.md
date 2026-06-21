@@ -53,11 +53,21 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 如果当前分支或工作区不同于 `origin_*`，必须明确说明“你当前看到的是临时实现分支或临时 worktree”。如果用户改为输入任意非编号内容，则表示当前功能还有问题，需要继续修改。
 
-可选收尾路径只有以下三种：
+可选收尾路径必须先按当前是否临时 worktree 差异化判断，不允许凭感觉直接给固定菜单。先执行：
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" recommend-actions <change-id>
+```
+
+如果 `temporary_worktree: true`，可选收尾路径只有以下三种：
 
 - 归档当前 change，并合并分支到 base 分支
 - 直接归档，不合并到 base 分支
 - 删除当前临时 worktree并废弃代码
+
+如果 `temporary_worktree: false`，可选收尾路径只有一种：
+
+- 直接归档（不合并分支，不删除 worktree）
 
 合并、废弃、删除与归档都是有后果的操作；但只要用户已经在编号菜单里明确授权，就直接执行，不要再拆成二次确认。
 
@@ -79,9 +89,9 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 3. 如果用户只需要保留归档记录而不合并代码，则允许“仅归档”。
 4. 如果用户要废弃代码，则删除 worktree 并丢弃本地临时分支。
 
-## 2.2 worktree 收尾规则
+## 2.2 差异化收尾规则
 
-如果当前是临时 worktree，必须展示以下编号菜单：
+如果脚本探测到 `temporary_worktree: true`，必须展示以下编号菜单：
 
 ```text
 1. 归档当前 change，并合并分支到 base 分支
@@ -99,14 +109,14 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 如果当前不是临时 worktree，且代码已经真正位于目标分支，也允许执行 `archive-only`。
 
-如果当前不在临时 worktree，且当前分支就是 `origin_branch`，并且该分支是 `main` 或 `master`，则不要再展示“归档后合并”或“删除当前临时 worktree”两个选项。此时收尾菜单只保留一个编号：
+如果脚本探测到 `temporary_worktree: false`，说明代码已经真正位于目标分支/目标工作区。无论当前目标分支是否为 `main`/`master`，都不要再展示“归档后合并”或“删除当前临时 worktree”两个选项。此时收尾菜单只保留一个编号：
 
 ```text
-1. 直接归档（当前已在 `main/master`，无需额外合并分支）
+1. 直接归档（当前不在临时 worktree，无需额外合并分支或删除 worktree）
 其他：任意非编号内容视为继续修改当前实现；用户未输入时默认停留在当前评审阶段
 ```
 
-也就是说，`master/main` 分支就不要提示合并分支/删除 worktree。
+也就是说，不在临时 worktree 时，不管当前目标分支叫 `main`、`master`、`develop`、`feature/*` 还是其他名称，都不要提示合并分支/删除 worktree。
 
 如果用户之前已经在 execute phase 的完成菜单里选了收尾编号，则这里不再重复相同菜单，而是结合实际工作区状态直接执行对应动作。
 
@@ -141,8 +151,8 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
   1. closeout 前先自动提交当前工作区里与本次 change 相关的脏文件。
   2. 如果 archive 产生了新的归档工件或删除了 `.onespec.yaml`，archive 之后再自动补一笔归档提交。
   3. 如果用户选择“先归档再合并”，则必须在 archive 提交完成后，再把当前实现分支合并回 base 分支。
-- 如果用户选择 `archive-then-merge-worktree`，必须先归档，再合并到目标分支，并将状态设为 `archived`。
-- 如果用户选择 `archive-only`，直接执行 OpenSpec archive，并将状态设为 `archived`；不自动合并，不自动删除当前 worktree。
+- 如果用户选择 `archive-then-merge-worktree`，必须仅在 `temporary_worktree: true` 时执行；先归档，再合并到目标分支，最后删除临时 worktree，并将状态设为 `archived`。
+- 如果用户选择 `archive-only`，直接执行 OpenSpec archive，并将状态设为 `archived`；不自动合并。若 `temporary_worktree: false`，也不得删除工作区或 worktree。
 - 如果用户选择 `discard-worktree`，不执行归档，不把废弃分支代码合入 base 分支。
 - 只有真正执行 archive 后，才删除运行时状态文件：
 

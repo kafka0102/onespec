@@ -183,7 +183,7 @@ test('onespec-closeout validate-actions allows archive-only on target branch and
 
   assert.match(invalid.stdout, /selected_actions: archive-only/);
   assert.match(invalid.stdout, /valid: true/);
-  assert.match(invalid.stdout, /允许直接归档当前 change；当前已经在 main，无需额外合并分支，也不自动删除当前工作区。/);
+  assert.match(invalid.stdout, /允许直接归档当前 change；当前不在临时 worktree，当前分支 main 已是目标分支，无需额外合并分支，也不会删除工作区。/);
   assert.doesNotMatch(invalid.stdout, /base 分支/);
   assert.match(recommended.stdout, /temporary_worktree: false/);
   assert.match(recommended.stdout, /recommended_actions: archive-only/);
@@ -236,8 +236,42 @@ test('onespec-closeout validate-actions avoids base-branch wording on master tar
 
   assert.match(stdout, /selected_actions: archive-only/);
   assert.match(stdout, /valid: true/);
-  assert.match(stdout, /允许直接归档当前 change；当前已经在 master，无需额外合并分支，也不自动删除当前工作区。/);
+  assert.match(stdout, /允许直接归档当前 change；当前不在临时 worktree，当前分支 master 已是目标分支，无需额外合并分支，也不会删除工作区。/);
   assert.doesNotMatch(stdout, /base 分支/);
+});
+
+test('onespec-closeout validate-actions treats a non-worktree feature branch as archive-only target branch', async () => {
+  const projectPath = await tmpProject();
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+
+  await initGitRepo(projectPath);
+  await execFileAsync('git', ['checkout', '-b', 'feature/native-closeout'], { cwd: projectPath });
+  await initChangeState(projectPath, 'archive-feature', {
+    origin_branch: 'feature/native-closeout',
+    origin_workspace_path: projectPath,
+    origin_workspace_mode: 'current-branch',
+  });
+
+  const recommended = await execFileAsync('bash', [closeoutScriptPath, 'recommend-actions', 'archive-feature'], {
+    cwd: projectPath,
+  });
+  const archiveOnly = await execFileAsync(
+    'bash',
+    [closeoutScriptPath, 'validate-actions', 'archive-feature', 'archive-only'],
+    { cwd: projectPath },
+  );
+  const mergeAttempt = await execFileAsync(
+    'bash',
+    [closeoutScriptPath, 'validate-actions', 'archive-feature', 'archive-then-merge-worktree'],
+    { cwd: projectPath },
+  );
+
+  assert.match(recommended.stdout, /temporary_worktree: false/);
+  assert.match(recommended.stdout, /recommended_actions: archive-only/);
+  assert.match(archiveOnly.stdout, /valid: true/);
+  assert.match(archiveOnly.stdout, /当前不在临时 worktree，当前分支 feature\/native-closeout 已是目标分支/);
+  assert.match(mergeAttempt.stdout, /valid: false/);
+  assert.match(mergeAttempt.stdout, /不能先归档再合并：当前不在临时 worktree。/);
 });
 
 test('onespec-closeout validate-actions allows archive-only inside a temporary worktree', async () => {

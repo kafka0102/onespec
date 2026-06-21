@@ -214,7 +214,15 @@ After running those commands, the user-facing report must include all of the fol
 
 ### 5.3 Numbered Next-Step Menu Template
 
-The report must end with a menu equivalent to:
+Before generating the next-step menu, inspect the current closeout state with the script. Do not infer whether merge/worktree deletion is needed from branch names, path names, or intuition:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" recommend-actions <change-id>
+```
+
+Generate the menu from the inspected state:
+
+- If `temporary_worktree: true`, the current implementation lives in a temporary worktree. The report must end with a menu equivalent to:
 
 ```text
 ---
@@ -231,7 +239,7 @@ Other: any non-numbered content means continue modifying the current implementat
 ---
 ```
 
-If the current checkout is not a temporary worktree, the current branch already equals `origin_branch`, and that branch is `main` or `master`, do not show "merge the branch into the base branch" or "delete the current temporary worktree". In that case the closeout menu must collapse to a single archive-only option:
+- If `temporary_worktree: false`, the current implementation is already on the target branch/workspace and there is no temporary worktree to merge back or delete. Regardless of whether that branch is `main`, `master`, `develop`, `feature/*`, or any other name, do not show "merge the branch into the base branch" or "delete the current temporary worktree". In that case the closeout menu must collapse to a single archive-only option:
 
 ```text
 ---
@@ -241,18 +249,19 @@ Current branch: <branch>
 Current workspace: <path>
 Origin: <origin_branch> @ <origin_workspace_path>
 
-1. Archive only, without merging
+1. Archive only (current checkout is not a temporary worktree; no branch merge or worktree deletion is needed)
 Other: any non-numbered content means continue modifying the current implementation; if the user gives no input, remain paused in the current review stage
 ---
 ```
 
-In other words, on `master/main`, do not prompt for branch merge or worktree deletion.
+In other words, when `temporary_worktree: false`, do not prompt for branch merge or worktree deletion on any target branch.
 
-If the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
+If the script reports that the current branch or workspace differs from `origin_*`, add an explicit note that implementation currently lives in a temporary branch or temporary worktree and that any non-numbered reply will be treated as a request for more implementation work.
 
-- If the user chooses `1`, archive phase must archive first, then merge the branch into the base branch.
-- If the user chooses `2`, archive phase must archive only, without merging and without auto-deleting the current worktree.
-- If the user chooses `3`, archive phase must delete the temporary worktree and discard the code without archiving.
+- If `temporary_worktree: true` and the user chooses `1`, archive phase must archive first, then merge the branch into the base branch, then delete the temporary worktree.
+- If `temporary_worktree: true` and the user chooses `2`, archive phase must archive only, without merging and without auto-deleting the current worktree.
+- If `temporary_worktree: true` and the user chooses `3`, archive phase must delete the temporary worktree and discard the code without archiving.
+- If `temporary_worktree: false` and the user chooses `1`, archive phase must archive only; it must not merge a branch or delete any workspace/worktree.
 
 Do not stop at an abstract note such as "the next step is archive phase" or just "do review-closeout". You must also give the user a concrete numbered menu.
 

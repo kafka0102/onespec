@@ -53,11 +53,21 @@ Before offering closeout choices, explicitly tell the user:
 
 If the current branch or workspace differs from the recorded `origin_*` fields, explicitly say that the implementation is now living in a temporary branch or temporary worktree. If the user switches to free-form text, treat it as a request for more code changes.
 
-Supported closeout paths are limited to these three outcomes:
+Supported closeout paths must first be selected from the actual temporary-worktree state. Do not show a fixed menu by intuition. First run:
+
+```bash
+"$ONESPEC_BASH" "$ONESPEC_CLOSEOUT" recommend-actions <change-id>
+```
+
+If `temporary_worktree: true`, supported closeout paths are limited to these three outcomes:
 
 - Archive the current change, then merge the branch into the base branch
 - Archive only, without merging
 - Delete the current temporary worktree and discard the code
+
+If `temporary_worktree: false`, the only supported closeout path is:
+
+- Archive only, without merging or deleting a worktree
 
 Merge, discard, deletion, and archive are consequential actions, but once the user has explicitly selected them in the numbered menu, execute them directly without another confirmation round.
 
@@ -79,9 +89,9 @@ Default recommended order:
 3. if the user only wants to preserve the archive record without merging code, allow archive-only
 4. if the user wants to discard the code, delete the worktree and drop the local temporary branch
 
-## 2.2 Worktree Closeout Rules
+## 2.2 State-Specific Closeout Rules
 
-If the current workspace is a temporary worktree, show this menu:
+If the script reports `temporary_worktree: true`, show this menu:
 
 ```text
 1. Archive the current change, then merge the branch into the base branch
@@ -99,14 +109,14 @@ Menu interpretation:
 
 If the current workspace is not a temporary worktree and the code is already truly on the target branch, `archive-only` is allowed.
 
-If the current checkout is not a temporary worktree, the current branch already equals `origin_branch`, and that branch is `main` or `master`, do not show the "archive then merge" or "delete the current temporary worktree" options. In that case the closeout menu must contain only:
+If the script reports `temporary_worktree: false`, the code is already truly on the target branch/workspace. Regardless of whether the target branch is `main`, `master`, `develop`, `feature/*`, or any other name, do not show the "archive then merge" or "delete the current temporary worktree" options. In that case the closeout menu must contain only:
 
 ```text
-1. Archive only, without merging
+1. Archive only (current checkout is not a temporary worktree; no branch merge or worktree deletion is needed)
 Other: any non-numbered content means continue modifying the current implementation; if the user gives no input, remain paused in the current review stage
 ```
 
-In other words, on `master/main`, do not prompt for branch merge or worktree deletion.
+In other words, when `temporary_worktree: false`, do not prompt for branch merge or worktree deletion on any target branch.
 
 If the user already selected a closeout number in the execute phase completion menu, do not repeat the same menu here; combine that reply with the actual workspace state and execute the matching action directly.
 
@@ -141,8 +151,8 @@ Before merge, discard, delete, or archive is finalized, always check whether the
   1. auto-commit current-workspace dirty files related to the change before closeout continues
   2. if archive creates new archive artifacts or removes `.onespec.yaml`, auto-commit the archive result after archive finishes
   3. if the user chooses archive-then-merge, merge the implementation branch back into the base branch only after the archive commit is complete
-- If the user selects `archive-then-merge-worktree`, archive first, then merge into the target branch, and set state to `archived`.
-- If the user selects `archive-only`, run OpenSpec archive and set state to `archived`; do not auto-merge and do not auto-delete the current worktree.
+- If the user selects `archive-then-merge-worktree`, run it only when `temporary_worktree: true`; archive first, then merge into the target branch, then delete the temporary worktree, and set state to `archived`.
+- If the user selects `archive-only`, run OpenSpec archive and set state to `archived`; do not auto-merge. When `temporary_worktree: false`, also do not delete any workspace or worktree.
 - If the user discards the worktree, do not archive and do not merge discarded branch code into the base branch.
 - Only after archive actually runs should the runtime state file be removed:
 
