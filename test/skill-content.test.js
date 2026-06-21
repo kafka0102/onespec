@@ -103,8 +103,8 @@ test('design reference documents proposal and approval routing guardrails', asyn
     'rollout / migration / compatibility',
     'non-goals',
     '只有用户明确批准 proposal / design / spec 后，才允许进入实现计划',
-    '显式选项 + 推荐项 + 可直接回复的口令',
-    '可直接回复：`批准，按推荐路径继续`',
+    '显式编号选项 + 推荐项',
+    '用户只需回复数字编号',
     '推荐组合，而不是只推荐抽象路线',
     'git rev-parse --path-format=absolute --git-dir',
     '不要再二次询问 `subagent/local` 或 `worktree/current-branch`',
@@ -116,6 +116,12 @@ test('design reference documents proposal and approval routing guardrails', asyn
   ]) {
     expectIncludes(reference, expected);
   }
+
+  assert.doesNotMatch(reference, /可直接回复/);
+  assert.doesNotMatch(reference, /批准，按推荐路径继续/);
+  assert.doesNotMatch(reference, /批准，但我要改实现路径/);
+  assert.doesNotMatch(reference, /使用 Superpowers/);
+  assert.doesNotMatch(reference, /使用 OpenSpec apply/);
 });
 
 test('execute reference documents apply, planning, and implementation guardrails', async () => {

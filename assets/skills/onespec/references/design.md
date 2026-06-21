@@ -142,7 +142,7 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 
 默认意图映射、issue workflow 路由或实现路径推荐，不等于 proposal 已获批。
 
-只有用户明确批准 proposal / design / spec 后，才允许进入实现计划。设计阶段结束时，不要只给一句自由文本，也不要只要求用户输入 `批准`、`yes`、`continue` 等完整词；必须给出“显式选项 + 推荐项 + 可直接回复的口令”菜单。用户可以回复数字，也可以直接回复对应口令。沉默、“看起来还行”、最初的“开始实现”、“执行这个 change”或“make plan”都不算对 proposal 产物的批准。
+只有用户明确批准 proposal / design / spec 后，才允许进入实现计划。设计阶段结束时，不要只给一句自由文本，也不要要求用户输入 `批准`、`yes`、`continue` 等完整词；必须给出“显式编号选项 + 推荐项”菜单。用户只需回复数字编号。沉默、“看起来还行”、最初的“开始实现”、“执行这个 change”或“make plan”都不算对 proposal 产物的批准。
 
 生成批准菜单前先确定推荐组合：
 
@@ -155,42 +155,31 @@ OpenSpec artifacts 写完后，不要只汇报“proposal 已生成”。必须�
 默认使用下面这组批准菜单，并把推荐组合写进第 1 项。菜单必须解释组合由三部分构成：实现路径 + 执行方式 + 工作区策略。
 
 1. 批准当前 proposal / design / spec，并按推荐组合继续实现：`<recommended-combination>`（推荐）
-   可直接回复：`批准，按推荐路径继续`
 2. 批准当前 proposal / design / spec，但我要改实现路径、执行方式或工作区
-   可直接回复：`批准，但我要改实现路径`
 3. 先修改 proposal / design / tasks / spec；我会补充要改的点
-   可直接回复：`先修改 proposal`
 4. 先停在设计阶段，暂不进入实现
-   可直接回复：`先停在设计阶段`
 其他：如果意图不在以上选项里，允许用户直接补充说明其他操作
 
 菜单解释规则：
 
-- 用户回复 `1` 或 `批准，按推荐路径继续`：视为批准当前 artifacts，并接受当前推荐组合；不要再二次询问 `subagent/local` 或 `worktree/current-branch`，直接记录该组合对应的 `implementation_path`、`execution_method` 与 `workspace`。
-- 用户回复 `2` 或 `批准，但我要改实现路径`：视为批准当前 artifacts，但要覆盖推荐组合；此时继续给出组合菜单，不要把 `subagent/local` 与 `worktree/current-branch` 拆成两轮问题。
-- 用户回复 `3` 或 `先修改 proposal`：继续留在 design phase，根据用户反馈修改 artifacts，不进入实现。
-- 用户回复 `4` 或 `先停在设计阶段`：暂停在设计阶段，等待用户后续指令。
+- 用户回复 `1`：视为批准当前 artifacts，并接受当前推荐组合；不要再二次询问 `subagent/local` 或 `worktree/current-branch`，直接记录该组合对应的 `implementation_path`、`execution_method` 与 `workspace`。
+- 用户回复 `2`：视为批准当前 artifacts，但要覆盖推荐组合；此时继续给出组合菜单，不要把 `subagent/local` 与 `worktree/current-branch` 拆成两轮问题。
+- 用户回复 `3`：继续留在 design phase，根据用户反馈修改 artifacts，不进入实现。
+- 用户回复 `4`：暂停在设计阶段，等待用户后续指令。
 - 用户输入其他自由文本：如果意图清晰，按用户自定义意图处理；如果仍有歧义，只追问一个最短的澄清问题。
 
-当用户选择第 2 项，后续确认也使用“显式组合选项 + 推荐项 + 可直接回复口令”菜单，不要只给数字或只给一句自由文本。根据当前是否已经在附加 worktree 中生成菜单：
+当用户选择第 2 项，后续确认也使用“显式编号组合选项 + 推荐项”菜单；用户只需回复数字编号。不要只给一句自由文本，也不要在每个选项下附加口令提示。根据当前是否已经在附加 worktree 中生成菜单：
 
 - 如果当前不在附加 worktree 中，默认菜单：
   1. `Superpowers + subagent + new worktree`（推荐）
-     可直接回复：`使用 Superpowers subagent worktree`
   2. `Superpowers + local + new worktree`
-     可直接回复：`使用 Superpowers local worktree`
   3. `Superpowers + local + current branch`
-     可直接回复：`使用 Superpowers local current-branch`
   4. `OpenSpec apply + native + current branch`
-     可直接回复：`使用 OpenSpec apply`
   其他：允许用户补充说明特殊组合；例如明确要求 `Superpowers + subagent + current branch`
 - 如果当前已经在附加 worktree 中，默认菜单：
   1. `Superpowers + subagent + current worktree/current branch`（推荐）
-     可直接回复：`使用 Superpowers subagent 当前 worktree`
   2. `Superpowers + local + current worktree/current branch`
-     可直接回复：`使用 Superpowers local 当前 worktree`
   3. `OpenSpec apply + native + current worktree/current branch`
-     可直接回复：`使用 OpenSpec apply`
   其他：允许用户补充说明特殊组合；不要推荐再创建新的 worktree
 
 `main`/`master` 规则：

@@ -210,7 +210,7 @@ git -C "$implementation_workspace_path" status --short
 7. 是否更新了 `proposal.md`、`design.md` 或 spec delta
 8. 测试结果
 9. `openspec validate <change-id> --strict` 结果
-10. 下一步编号选项（必须给出可直接回复的数字菜单，并明确任意非编号内容视为继续修改当前实现）
+10. 下一步编号选项（必须给出只需回复数字编号的菜单，并明确任意非编号内容视为继续修改当前实现）
 
 ### 5.3 下一步编号菜单模板
 
@@ -254,7 +254,7 @@ git -C "$implementation_workspace_path" status --short
 - 选择 `2` 时，archive phase 只做归档，不合并分支，也不自动删除当前 worktree。
 - 选择 `3` 时，archive phase 删除当前临时 worktree 并废弃代码，不执行归档。
 
-不要只停在“下一步应进入 archive phase”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户可直接回复的编号选项。
+不要只停在“下一步应进入 archive phase”这种抽象提示，也不要只说“做 `review-closeout`”。必须同时给出用户只需回复数字编号的选项。
 
 ### 5.4 反模式（NEVER）
 
