@@ -78,9 +78,18 @@ script_dir() {
 
 canonicalize_path() {
   local input="$1"
-  if [ -z "$input" ] || [ "$input" = "unknown" ] || [ ! -d "$input" ]; then
+  local label="${2:-path}"
+  if [ -z "$input" ] || [ "$input" = "unknown" ]; then
     printf '%s\n' "$input"
     return 0
+  fi
+  if [ ! -e "$input" ]; then
+    echo "ERROR: $label does not exist: $input" >&2
+    return 1
+  fi
+  if [ ! -d "$input" ]; then
+    echo "ERROR: $label is not a directory: $input" >&2
+    return 1
   fi
   (
     cd "$input"
@@ -102,7 +111,7 @@ selected_actions_csv() {
 }
 
 origin_workspace_path_for_change() {
-  canonicalize_path "$(get_state_value "$1" origin_workspace_path)"
+  canonicalize_path "$(get_state_value "$1" origin_workspace_path)" "origin workspace path"
 }
 
 normalize_action() {
@@ -132,7 +141,7 @@ temporary_worktree_status() {
   origin_branch="$(get_state_value "$change" origin_branch)"
   origin_path="$(get_state_value "$change" origin_workspace_path)"
   origin_mode="$(get_state_value "$change" origin_workspace_mode)"
-  origin_path="$(canonicalize_path "$origin_path")"
+  origin_path="$(canonicalize_path "$origin_path" "origin workspace path")"
   current_path="$(state_workspace_path "$change")"
   current_head="$(git -C "$current_path" branch --show-current 2>/dev/null || true)"
   current_head="${current_head:-detached}"
@@ -221,7 +230,7 @@ cmd_validate_actions() {
   ensure_git_repo
 
   local -a selected=()
-  local action normalized
+  local action selected_action normalized
   local already_selected
   local has_archive_then_merge="false"
   local has_archive_only="false"
@@ -232,8 +241,8 @@ cmd_validate_actions() {
     normalized="$(normalize_action "$action")"
     [ -n "$normalized" ] || continue
     already_selected="false"
-    for action in "${selected[@]:-}"; do
-      if [ "$action" = "$normalized" ]; then
+    for selected_action in "${selected[@]:-}"; do
+      if [ "$selected_action" = "$normalized" ]; then
         already_selected="true"
         break
       fi
@@ -243,8 +252,8 @@ cmd_validate_actions() {
     fi
   done
 
-  for action in "${selected[@]}"; do
-    case "$action" in
+  for selected_action in "${selected[@]}"; do
+    case "$selected_action" in
       archive-then-merge-worktree) has_archive_then_merge="true" ;;
       archive-only) has_archive_only="true" ;;
       discard-worktree) has_discard_worktree="true" ;;

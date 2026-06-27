@@ -59,6 +59,37 @@ fi
   return { scriptPath, logPath };
 }
 
+test('onespec-closeout validate-actions does not reuse the outer action loop variable', async () => {
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const source = await readFile(closeoutScriptPath, 'utf8');
+  const [, body] = source.match(/cmd_validate_actions\(\) \{([\s\S]*?)\n\}/) ?? [];
+
+  assert.ok(body, 'cmd_validate_actions function should exist');
+  assert.equal([...body.matchAll(/^\s*for action in /gm)].length, 1);
+});
+
+test('onespec-closeout inspect fails when origin workspace path does not exist', async () => {
+  const projectPath = await tmpProject();
+  const closeoutScriptPath = path.resolve('assets/skills/onespec/scripts/onespec-closeout.sh');
+  const missingOriginPath = path.join(projectPath, 'missing-origin');
+
+  await initGitRepo(projectPath);
+  await initChangeState(projectPath, 'missing-origin', {
+    origin_branch: 'main',
+    origin_workspace_path: missingOriginPath,
+    origin_workspace_mode: 'worktree',
+  });
+
+  await assert.rejects(
+    execFileAsync('bash', [closeoutScriptPath, 'inspect', 'missing-origin'], { cwd: projectPath }),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, new RegExp(`origin workspace path does not exist: ${missingOriginPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+      return true;
+    },
+  );
+});
+
 test('onespec-closeout inspect recommends archive-then-merge when a temporary worktree targets main', async () => {
   const projectPath = await tmpProject();
   const worktreePath = await tmpProject('onespec-closeout-wt-');
