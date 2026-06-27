@@ -8,7 +8,7 @@ OneSpec is a CLI and agent skill bundle for running an OpenSpec + Superpowers wo
 
 ### `onespec`
 
-`onespec` turns OpenSpec from a set of manual commands into an agent-operated workflow. It prepares the design, spec, and task artifacts, asks the human to confirm the design before implementation, recommends the implementation method and path based on complexity, then carries the change through execution, review, and archive.
+`onespec` turns OpenSpec from a set of manual commands into an agent-operated workflow. It prepares the design, spec, and tasks, asks the human to confirm the design before implementation, recommends the implementation method and path based on complexity, then carries the change through execution, review, and archive.
 
 Use it when a change needs normal design confirmation and acceptance review. You invoke the workflow in natural language instead of manually chaining multiple OpenSpec commands.
 
@@ -20,16 +20,42 @@ Use it when a change needs normal design confirmation and acceptance review. You
 
 `onespec`
 
-```mermaid
-flowchart LR
-  A[User request] --> B[Draft design, spec, and tasks] --> C{Human confirms design} --> D[Recommend method and path by complexity] --> E[Execute approved change] --> F{Human reviews acceptance} --> G[Archive]
+```
+┌──────────┐    ┌──────────┐
+│User      │───▶│Complexity│
+│request   │    │ analysis │
+└──────────┘    └────┬─────┘
+                     │
+                  ┌──┴──┐
+                  │     │
+                  Low  High
+                  │     │
+                  ▼     ▼
+┌──────────┐    ┌──────────┐
+│Draft     │◀───│Brainstorm│
+│design,   │    └──────────┘
+│spec, &   │
+│ tasks    │
+└────┬─────┘
+     │
+     ▼
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│Human     │───▶│Recommend │───▶│Execute   │───▶│Human     │───▶│ Archive  │
+│confirms  │    │method &  │    │approved  │    │reviews   │    │          │
+│ design   │    │path by   │    │ change   │    │acceptance│    │          │
+└──────────┘    │complexity│    └──────────┘    └──────────┘    └──────────┘
+                └──────────┘
 ```
 
 `onespec-fast`
 
-```mermaid
-flowchart LR
-  A[Fast-path request] --> B[Create compact OpenSpec context] --> C[Native OpenSpec apply] --> D[Test and validate] --> E[Archive]
+```
+┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
+│Fast-path │───▶│Create    │───▶│Native    │───▶│Test &    │───▶│ Archive  │
+│request   │    │compact   │    │OpenSpec  │    │validate  │    │          │
+└──────────┘    │OpenSpec  │    │ apply    │    └──────────┘    └──────────┘
+                │ context  │    └──────────┘
+                └──────────┘
 ```
 
 ## Install
