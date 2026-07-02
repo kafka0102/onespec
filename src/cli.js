@@ -4,7 +4,7 @@ import { checkbox, select, confirm } from '@inquirer/prompts';
 
 import { doctorProject } from './doctor.js';
 import { SUPPORTED_LANGUAGES } from './init.js';
-import { getPlatform, PLATFORMS } from './platforms.js';
+import { getPlatform } from './platforms.js';
 import {
   detectExistingOneSpecPlatforms,
   detectPlatforms,
@@ -157,7 +157,7 @@ function printHelp() {
 
 说明：
   当前提供中英文 Skill bundle，官方支持 ${SUPPORTED_PLATFORM_IDS.join(' / ')}。
-  init 会引导选择 agent，并自动安装 OpenSpec / Superpowers / OneSpec。
+  init 会引导选择 agent，并自动安装 OpenSpec / OneSpec（Superpowers 需另行手动安装）。
 `);
 }
 
@@ -181,7 +181,6 @@ function printSummary(result) {
   console.log(`Skill 语言：${result.languageName} (${result.language})`);
   console.log(`OpenSpec CLI：${result.openspecCli.status === 'installed' ? '已自动安装' : '已存在'}`);
   console.log(`OpenSpec Tools：${result.openspec.toolIds.join(', ')}`);
-  console.log(`Superpowers Agents：${result.superpowers.agents.join(', ')}`);
   for (const platformResult of result.results) {
     const platformLabel = `${platformResult.platformName} (${platformResult.platform})`;
     const skillStatus = platformResult.installedSkill ? '已安装/已覆盖' : '已存在，已跳过';

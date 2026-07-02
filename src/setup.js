@@ -7,7 +7,6 @@ import { initProject, SUPPORTED_LANGUAGES } from './init.js';
 import { getGlobalSkillDir, getPlatform, getProjectSkillDir, PLATFORMS } from './platforms.js';
 
 const OPEN_SPEC_CLI_PACKAGE = '@fission-ai/openspec@latest';
-const SUPERPOWERS_PACKAGE = 'obra/superpowers';
 
 export const SUPPORTED_PLATFORM_IDS = Object.keys(PLATFORMS);
 
@@ -28,10 +27,6 @@ export function commandExists(command) {
   } catch {
     return false;
   }
-}
-
-export function getNpxExecutable(platform = process.platform) {
-  return platform === 'win32' ? 'npx.cmd' : 'npx';
 }
 
 export function getNpmExecutable(platform = process.platform) {
@@ -109,27 +104,6 @@ export function buildOpenSpecInitCommand(targetPath, platformIds, scope, homeDir
   };
 }
 
-export function buildSuperpowersInstallCommand(platformIds, scope) {
-  const resolvedPlatforms = parsePlatformList(platformIds);
-  if (resolvedPlatforms.length === 0) {
-    throw new Error('At least one platform must be selected.');
-  }
-
-  const args = ['skills', 'add', SUPERPOWERS_PACKAGE, '-y'];
-  if (scope === 'global') {
-    args.push('-g');
-  }
-  for (const platformId of resolvedPlatforms) {
-    args.push('--agent', getPlatform(platformId).id);
-  }
-
-  return {
-    command: getNpxExecutable(),
-    args,
-    agents: resolvedPlatforms,
-  };
-}
-
 function runCommand(command, args, cwd = process.cwd()) {
   execFileSync(command, args, {
     cwd,
@@ -172,9 +146,6 @@ export async function initWorkspace(targetPath, options = {}, dependencies = {})
   const openSpecSetup = buildOpenSpecInitCommand(projectPath, selectedPlatformIds, scope, homeDir);
   commandRunner(openSpecSetup.command, openSpecSetup.args, projectPath);
 
-  const superpowersSetup = buildSuperpowersInstallCommand(selectedPlatformIds, scope);
-  commandRunner(superpowersSetup.command, superpowersSetup.args, projectPath);
-
   const results = [];
   for (const platformId of selectedPlatformIds) {
     results.push(
@@ -201,10 +172,6 @@ export async function initWorkspace(targetPath, options = {}, dependencies = {})
     openspec: {
       targetPath: openSpecSetup.targetPath,
       toolIds: openSpecSetup.toolIds,
-    },
-    superpowers: {
-      package: SUPERPOWERS_PACKAGE,
-      agents: superpowersSetup.agents,
     },
     results,
   };

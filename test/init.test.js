@@ -10,7 +10,6 @@ import { initProject } from '../src/init.js';
 import { getProjectSkillDir } from '../src/platforms.js';
 import {
   buildOpenSpecInitCommand,
-  buildSuperpowersInstallCommand,
   initWorkspace,
 } from '../src/setup.js';
 
@@ -140,7 +139,6 @@ echo "npx:$@" >> "${logPath}"
   assert.doesNotMatch(skill, /Language for/);
   assert.match(toolLog, /openspec:init/);
   assert.match(toolLog, /--tools codex,cursor/);
-  assert.match(toolLog, /npx:skills add obra\/superpowers -y --agent codex --agent cursor/);
 });
 
 test('CLI prints package version for version flags and command', async () => {
@@ -338,32 +336,6 @@ test('buildOpenSpecInitCommand targets selected platforms and scope', async () =
   assert.deepEqual(globalCommand.args, ['init', '/tmp/home', '--tools', 'claude']);
 });
 
-test('buildSuperpowersInstallCommand uses repeated agent flags', async () => {
-  const command = buildSuperpowersInstallCommand(['codex', 'cursor'], 'project');
-  const globalCommand = buildSuperpowersInstallCommand(['github-copilot'], 'global');
-
-  assert.match(command.command, /^npx/);
-  assert.deepEqual(command.args, [
-    'skills',
-    'add',
-    'obra/superpowers',
-    '-y',
-    '--agent',
-    'codex',
-    '--agent',
-    'cursor',
-  ]);
-  assert.deepEqual(globalCommand.args, [
-    'skills',
-    'add',
-    'obra/superpowers',
-    '-y',
-    '-g',
-    '--agent',
-    'github-copilot',
-  ]);
-});
-
 test('initWorkspace installs missing OpenSpec CLI before initializing workspace', async () => {
   const projectPath = await tmpProject();
   const commands = [];
@@ -411,11 +383,6 @@ test('initWorkspace installs missing OpenSpec CLI before initializing workspace'
   assert.deepEqual(commands[1], {
     command: 'openspec',
     args: ['init', '/tmp/onespec-home', '--tools', 'claude'],
-    cwd: projectPath,
-  });
-  assert.deepEqual(commands[2], {
-    command: 'npx',
-    args: ['skills', 'add', 'obra/superpowers', '-y', '-g', '--agent', 'claude-code'],
     cwd: projectPath,
   });
 });

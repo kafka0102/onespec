@@ -177,7 +177,7 @@ export async function doctorProject(projectPath, options = {}) {
   }
   if (!superpowers.available) {
     nextSteps.push(
-      `缺少 Superpowers Skills：${missing.join(', ')}。运行 \`onespec init --platform ${platform.id} --scope ${scope}\` 让 OneSpec 自动补齐。`,
+      `缺少 Superpowers Skills：${missing.join(', ')}。请手动安装 Superpowers，例如：\`npx superpowers skills add obra/superpowers -y${scope === 'global' ? ' -g' : ''} --agent ${platform.id}\`。`,
     );
   }
   if (nextSteps.length === 0) {
