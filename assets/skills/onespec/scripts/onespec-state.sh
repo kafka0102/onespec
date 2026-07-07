@@ -75,7 +75,50 @@ now_utc() {
 field_value() {
   local file="$1"
   local key="$2"
-  awk -F ': *' -v key="$key" '$1 == key { sub(/^[^:]+: */, ""); print; found=1; exit } END { if (!found) exit 0 }' "$file" 2>/dev/null
+  local raw
+  raw="$(
+    awk -v key="$key" '
+      index($0, key ":") == 1 {
+        sub(/^[^:]+:[[:space:]]*/, "", $0)
+        print
+        found=1
+        exit
+      }
+      END { if (!found) exit 0 }
+    ' "$file" 2>/dev/null
+  )"
+  decode_yaml_scalar "$raw"
+}
+
+encode_yaml_scalar() {
+  local value="$1"
+  if [ "$value" = "null" ]; then
+    printf 'null'
+    return 0
+  fi
+
+  if [[ -z "$value" || "$value" == *$'\n'* || "$value" == *": "* || "$value" == *" #"* || "$value" == "true" || "$value" == "false" || "$value" == "~" || "$value" == "null" || "$value" == "'"* || "$value" == "-"* || "$value" == "?"* || "$value" == ":"* || "$value" == "!"* || "$value" == "&"* || "$value" == "*"* || "$value" == "{"* || "$value" == "["* || "$value" == "#"* || "$value" == "|"* || "$value" == ">"* || "$value" == "@"* || "$value" == "\`"* || "$value" == *"'"* || "$value" == " "* || "$value" == *" " ]]; then
+    value="$(printf '%s' "$value" | sed "s/'/''/g")"
+    printf "'%s'" "$value"
+    return 0
+  fi
+
+  printf '%s' "$value"
+}
+
+decode_yaml_scalar() {
+  local raw="${1:-}"
+  if [ "$raw" = "null" ]; then
+    printf 'null\n'
+    return 0
+  fi
+
+  if [[ "$raw" == \'*\' ]]; then
+    raw="${raw#\'}"
+    raw="${raw%\'}"
+    raw="$(printf '%s' "$raw" | sed "s/''/'/g")"
+  fi
+  printf '%s\n' "$raw"
 }
 
 phase_rank() {
@@ -255,16 +298,17 @@ set_field() {
   local file="$1"
   local key="$2"
   local value="$3"
-  local tmp
+  local tmp encoded
   tmp="$(mktemp)"
+  encoded="$(encode_yaml_scalar "$value")"
   if grep -q "^${key}:" "$file"; then
-    awk -v key="$key" -v value="$value" '
+    awk -v key="$key" -v value="$encoded" '
       $0 ~ "^" key ":" { print key ": " value; next }
       { print }
     ' "$file" > "$tmp"
   else
     cat "$file" > "$tmp"
-    printf '%s: %s\n' "$key" "$value" >> "$tmp"
+    printf '%s: %s\n' "$key" "$encoded" >> "$tmp"
   fi
   mv "$tmp" "$file"
 }

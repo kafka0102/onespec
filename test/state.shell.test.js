@@ -88,6 +88,30 @@ test('onespec-state rejects invalid enum values and illegal phase transitions', 
   );
 });
 
+test('onespec-state round-trips YAML-sensitive scalar values safely', async () => {
+  const projectPath = await tmpProject();
+  const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
+  const statePath = path.join(projectPath, 'openspec', 'changes', 'yaml-safe', '.onespec.yaml');
+
+  await mkdir(path.join(projectPath, 'openspec', 'changes', 'yaml-safe'), { recursive: true });
+  await execFileAsync('bash', [scriptPath, 'init', 'yaml-safe'], { cwd: projectPath });
+  await execFileAsync(
+    'bash',
+    [scriptPath, 'set', 'yaml-safe', 'plan', "docs/plan's #1: rollout.md"],
+    { cwd: projectPath },
+  );
+
+  const { stdout: plan } = await execFileAsync(
+    'bash',
+    [scriptPath, 'get', 'yaml-safe', 'plan'],
+    { cwd: projectPath },
+  );
+  const state = await readFile(statePath, 'utf8');
+
+  assert.equal(plan.trim(), "docs/plan's #1: rollout.md");
+  assert.match(state, /plan: 'docs\/plan''s #1: rollout\.md'/);
+});
+
 test('onespec-state allows execution-oriented phase transitions and emits structured recovery hints', async () => {
   const projectPath = await tmpProject();
   const scriptPath = path.resolve('assets/skills/onespec/scripts/onespec-state.sh');
@@ -141,11 +165,23 @@ test('onespec-handoff records deterministic review state in the single runtime f
   });
 
   const state = await readFile(path.join(changeDir, '.onespec.yaml'), 'utf8');
+  const { stdout: handoffSummary } = await execFileAsync(
+    'bash',
+    [stateScriptPath, 'get', 'add-login', 'handoff_summary'],
+    { cwd: projectPath },
+  );
 
   assert.equal(stdout.trim(), path.join('openspec', 'changes', 'add-login', '.onespec.yaml'));
   assert.match(state, /handoff_context: openspec\/changes\/add-login\/.onespec.yaml/);
   assert.match(state, /handoff_purpose: proposal/);
-  assert.match(state, /handoff_summary: proposal handoff from 4 file\(s\); primary artifact: openspec\/changes\/add-login\/proposal\.md/);
+  assert.equal(
+    handoffSummary.trim(),
+    'proposal handoff from 4 file(s); primary artifact: openspec/changes/add-login/proposal.md',
+  );
+  assert.match(
+    state,
+    /handoff_summary: 'proposal handoff from 4 file\(s\); primary artifact: openspec\/changes\/add-login\/proposal\.md'/,
+  );
   assert.match(state, /handoff_hash: [a-f0-9]{64}/);
 });
 
