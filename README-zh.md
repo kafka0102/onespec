@@ -21,38 +21,14 @@ OneSpec 是一个 CLI 和 agent skill bundle，用来运行 OpenSpec + Superpowe
 `onespec`
 
 ```
-┌──────────┐    ┌──────────┐
-│用户提出   │───▶│复杂度分析  │
-│ 需求     │    └────┬─────┘
-└──────────┘         │
-                     │
-                  ┌──┴──┐
-                  │     │
-                  低    高
-                  │     │
-                  ▼     ▼
-┌──────────┐    ┌──────────┐
-│ 生成     │◀───│Brainstorm│
-│ design   │    └──────────┘
-│ spec     │
-│ tasks    │
-└────┬─────┘
-     │
-     ▼
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│人工确认    │───▶│按复杂度   │───▶│执行已批   │───▶│人工review │───▶│  归档    │
-│ 设计      │    │推荐实现   │    │准 change │    │ 验收      │    │          │
-└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────────┘
+用户需求 -> 歧义分析 -> superpowers:brainstorming(高歧义时) -> openspec::propose -> 复杂度分析+路径推荐 -> 🧑 批准 Gate -> [ Superpowers: writing-plans -> subagent-driven-development / executing-plans (TDD) | 原生 OpenSpec: openspec::apply ] -> 🧑 实现完成 Gate -> openspec::archive
 ```
 
 `onespec-fast`
 
 ```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│快速路径    │───▶│创建精简   │───▶│原生Open  │───▶│测试与校验  │───▶│  归档    │
-│请求       │    │OpenSpec  │    │Spec apply│    │          │    │          │
-└──────────┘    │ 上下文    │    └──────────┘    └──────────┘    └──────────┘
-                └──────────┘
+快速请求 -> openspec::propose -> openspec::apply -> 测试 + validate -> openspec::archive
+（全程无人工 Gate）
 ```
 
 ## 安装

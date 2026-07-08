@@ -21,41 +21,14 @@ Use it when a change needs normal design confirmation and acceptance review. You
 `onespec`
 
 ```
-┌──────────┐    ┌──────────┐
-│User      │───▶│Complexity│
-│request   │    │ analysis │
-└──────────┘    └────┬─────┘
-                     │
-                  ┌──┴──┐
-                  │     │
-                  Low  High
-                  │     │
-                  ▼     ▼
-┌──────────┐    ┌──────────┐
-│Draft     │◀───│Brainstorm│
-│design,   │    └──────────┘
-│spec, &   │
-│ tasks    │
-└────┬─────┘
-     │
-     ▼
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│Human     │───▶│Recommend │───▶│Execute   │───▶│Human     │───▶│ Archive  │
-│confirms  │    │method &  │    │approved  │    │reviews   │    │          │
-│ design   │    │path by   │    │ change   │    │acceptance│    │          │
-└──────────┘    │complexity│    └──────────┘    └──────────┘    └──────────┘
-                └──────────┘
+User request -> Ambiguity scan -> superpowers:brainstorming(high ambiguity) -> openspec::propose -> Complexity + path rec -> 🧑 Approval Gate -> [ Superpowers: writing-plans -> subagent-driven-development / executing-plans (TDD) | Native OpenSpec: openspec::apply ] -> 🧑 Completion Gate -> openspec::archive
 ```
 
 `onespec-fast`
 
 ```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐
-│Fast-path │───▶│Create    │───▶│Native    │───▶│Test &    │───▶│ Archive  │
-│request   │    │compact   │    │OpenSpec  │    │validate  │    │          │
-└──────────┘    │OpenSpec  │    │ apply    │    └──────────┘    └──────────┘
-                │ context  │    └──────────┘
-                └──────────┘
+Fast request -> openspec::propose -> openspec::apply -> tests + validate -> openspec::archive
+(no human gates throughout)
 ```
 
 ## Install
