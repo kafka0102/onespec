@@ -78,7 +78,7 @@ test('doctorProject passes when OneSpec and required Superpowers skills are inst
   assert.equal(report.superpowers.available, true);
   assert.deepEqual(report.superpowers.missing, []);
   assert.deepEqual(report.nextSteps, [
-    '当前项目尚未初始化 OpenSpec。请重新运行 `onespec init --platform codex --scope project` 让 OneSpec 自动补齐。',
+    '当前项目尚未初始化 OpenSpec。请手动运行 `openspec init <项目路径> --tools codex` 完成初始化。',
   ]);
 });
 

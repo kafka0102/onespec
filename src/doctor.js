@@ -1,19 +1,10 @@
 import { execFileSync } from 'node:child_process';
 import { access, readFile } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 
 import { BUNDLED_ONESPEC_REFERENCE_FILES, BUNDLED_ONESPEC_SKILLS } from './init.js';
-import { getDiscoveryRoots, getPlatform, getSkillDir } from './platforms.js';
-
-const REQUIRED_SUPERPOWERS = [
-  'brainstorming',
-  'writing-plans',
-  'using-git-worktrees',
-  'subagent-driven-development',
-  'executing-plans',
-  'test-driven-development',
-];
+import { getPlatform, getSkillDir } from './platforms.js';
+import { buildSuperpowersInstallHint, detectSuperpowers } from './superpowers.js';
 
 async function exists(filePath) {
   try {
@@ -36,28 +27,6 @@ function defaultCommandChecker(command) {
   } catch {
     return false;
   }
-}
-
-function defaultSkillRoots(projectPath, scope, platform) {
-  return [
-    getSkillDir(projectPath, scope, platform),
-    ...getDiscoveryRoots(projectPath, platform),
-    path.join(os.homedir(), '.claude', 'skills'),
-    path.join(os.homedir(), '.codex', 'superpowers', 'skills'),
-    path.join(os.homedir(), '.cursor', 'skills'),
-    path.join(os.homedir(), '.gemini', 'skills'),
-    path.join(os.homedir(), '.copilot', 'skills'),
-    path.join(os.homedir(), '.agents', 'skills'),
-  ];
-}
-
-async function skillInstalledInRoots(roots, name) {
-  for (const root of roots) {
-    if (await exists(path.join(root, name, 'SKILL.md'))) {
-      return true;
-    }
-  }
-  return false;
 }
 
 async function isChineseOneSpec(projectPath, scope, platform) {
@@ -124,31 +93,15 @@ export async function doctorProject(projectPath, options = {}) {
   const commandChecker = options.commandChecker ?? defaultCommandChecker;
 
   const onespec = await isChineseOneSpec(resolvedProject, scope, platform.id);
-  const skillRoots =
-    options.skillRoots ??
-    [
-      ...new Set([
-        ...defaultSkillRoots(resolvedProject, scope, platform.id),
-        ...(options.extraSkillRoots ?? []),
-      ]),
-    ];
-  const missing = [];
-  for (const skill of REQUIRED_SUPERPOWERS) {
-    if (!(await skillInstalledInRoots(skillRoots, skill))) {
-      missing.push(skill);
-    }
-  }
+  const superpowers = await detectSuperpowers(resolvedProject, scope, platform.id, {
+    skillRoots: options.skillRoots,
+    extraSkillRoots: options.extraSkillRoots,
+  });
 
   const openspecCli = {
     available: commandChecker('openspec'),
   };
   const openSpecProjectInstalled = await hasOpenSpecProject(resolvedProject);
-  const superpowers = {
-    available: missing.length === 0,
-    required: REQUIRED_SUPERPOWERS,
-    missing,
-    searchedRoots: skillRoots,
-  };
 
   const nextSteps = [];
   if (onespec.missingSkills.length > 0) {
@@ -168,16 +121,16 @@ export async function doctorProject(projectPath, options = {}) {
   }
   if (!openspecCli.available) {
     nextSteps.push(
-      `未找到 OpenSpec CLI。运行 \`onespec init --platform ${platform.id} --scope ${scope}\` 让 OneSpec 自动安装并初始化 OpenSpec。`,
+      `未找到 OpenSpec CLI。请手动安装 OpenSpec，例如运行 \`npm install -g @fission-ai/openspec\`。`,
     );
   } else if (scope === 'project' && !openSpecProjectInstalled) {
     nextSteps.push(
-      `当前项目尚未初始化 OpenSpec。请重新运行 \`onespec init --platform ${platform.id} --scope project\` 让 OneSpec 自动补齐。`,
+      `当前项目尚未初始化 OpenSpec。请手动运行 \`openspec init <项目路径> --tools ${platform.openspecToolId}\` 完成初始化。`,
     );
   }
   if (!superpowers.available) {
     nextSteps.push(
-      `缺少 Superpowers Skills：${missing.join(', ')}。请手动安装 Superpowers，例如：\`npx superpowers skills add obra/superpowers -y${scope === 'global' ? ' -g' : ''} --agent ${platform.id}\`。`,
+      `缺少 Superpowers Skills：${superpowers.missing.join(', ')}。${buildSuperpowersInstallHint(scope, platform.id)}`,
     );
   }
   if (nextSteps.length === 0) {

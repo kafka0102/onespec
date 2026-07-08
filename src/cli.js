@@ -12,6 +12,7 @@ import {
   parsePlatformList,
   SUPPORTED_PLATFORM_IDS,
 } from './setup.js';
+import { buildSuperpowersInstallHint, detectSuperpowers } from './superpowers.js';
 
 function parseArgs(argv) {
   const args = [...argv];
@@ -157,7 +158,7 @@ function printHelp() {
 
 说明：
   当前提供中英文 Skill bundle，官方支持 ${SUPPORTED_PLATFORM_IDS.join(' / ')}。
-  init 会引导选择 agent，并自动安装 OpenSpec / OneSpec（Superpowers 需另行手动安装）。
+  init 会引导选择 agent，并安装 OneSpec Skill（OpenSpec / Superpowers 需另行手动安装）。
 `);
 }
 
@@ -179,8 +180,6 @@ function printSummary(result) {
   console.log(`目标平台：${result.platformNames.join(', ')}`);
   console.log(`安装范围：${result.scope}`);
   console.log(`Skill 语言：${result.languageName} (${result.language})`);
-  console.log(`OpenSpec CLI：${result.openspecCli.status === 'installed' ? '已自动安装' : '已存在'}`);
-  console.log(`OpenSpec Tools：${result.openspec.toolIds.join(', ')}`);
   for (const platformResult of result.results) {
     const platformLabel = `${platformResult.platformName} (${platformResult.platform})`;
     const skillStatus = platformResult.installedSkill ? '已安装/已覆盖' : '已存在，已跳过';
@@ -190,6 +189,29 @@ function printSummary(result) {
     console.log(`工作目录：${path.join(result.projectPath, 'docs', 'superpowers')}`);
   }
   console.log('\n开始使用：重启对应 agent 会话后，直接输入 “使用 onespec：<你的任务描述>”。\n');
+}
+
+async function printSuperpowersNotice(result) {
+  const affected = [];
+  for (const platformId of result.platforms) {
+    const detected = await detectSuperpowers(result.projectPath, result.scope, platformId);
+    if (!detected.available) {
+      affected.push({ platformId, missing: detected.missing });
+    }
+  }
+
+  if (affected.length === 0) {
+    return;
+  }
+
+  console.log('⚠️ Superpowers 检测：以下 agent 缺少关键 Skills，onespec 工作流需要 Superpowers 才能完整运行。');
+  for (const { platformId, missing } of affected) {
+    const platformName = getPlatform(platformId).name;
+    console.log(
+      `- ${platformName}（${platformId}）缺少：${missing.join(', ')}。${buildSuperpowersInstallHint(result.scope, platformId)}`,
+    );
+  }
+  console.log('');
 }
 
 function printDoctor(report) {
@@ -249,5 +271,6 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(JSON.stringify(result, null, 2));
   } else {
     printSummary(result);
+    await printSuperpowersNotice(result);
   }
 }

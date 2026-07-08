@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -8,10 +8,7 @@ import { promisify } from 'node:util';
 
 import { initProject } from '../src/init.js';
 import { getProjectSkillDir } from '../src/platforms.js';
-import {
-  buildOpenSpecInitCommand,
-  initWorkspace,
-} from '../src/setup.js';
+import { initWorkspace } from '../src/setup.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -24,12 +21,6 @@ const ONESPEC_REFERENCES = ['design.md', 'execute.md', 'archive.md', 'fast.md'];
 
 function projectSkillPath(projectPath, platform, ...parts) {
   return path.join(getProjectSkillDir(projectPath, platform), ...parts);
-}
-
-async function createFakeExecutable(binDir, name, source) {
-  const filePath = path.join(binDir, name);
-  await writeFile(filePath, source, 'utf8');
-  await chmod(filePath, 0o755);
 }
 
 test('initProject installs bundled OneSpec skills and creates working directories', async () => {
@@ -89,36 +80,12 @@ test('initProject installs bundled OneSpec skills and creates working directorie
 
 test('CLI init installs Chinese OneSpec skill with json output', async () => {
   const projectPath = await tmpProject();
-  const binDir = await mkdtemp(path.join(os.tmpdir(), 'onespec-bin-'));
-  const logPath = path.join(binDir, 'tool.log');
-
-  await createFakeExecutable(
-    binDir,
-    'openspec',
-    `#!/bin/sh
-echo "openspec:$@" >> "${logPath}"
-if [ "$1" = "init" ]; then
-  mkdir -p "$2/openspec"
-fi
-`,
-  );
-  await createFakeExecutable(
-    binDir,
-    'npx',
-    `#!/bin/sh
-echo "npx:$@" >> "${logPath}"
-`,
-  );
 
   const { stdout } = await execFileAsync(
     process.execPath,
     ['bin/onespec.js', 'init', projectPath, '--platform', 'codex,cursor', '--yes', '--json'],
     {
       cwd: path.resolve('.'),
-      env: {
-        ...process.env,
-        PATH: `${binDir}:${process.env.PATH}`,
-      },
     },
   );
   const result = JSON.parse(stdout);
@@ -127,18 +94,14 @@ echo "npx:$@" >> "${logPath}"
     projectSkillPath(projectPath, 'cursor', 'onespec', 'SKILL.md'),
     'utf8',
   );
-  const toolLog = await readFile(logPath, 'utf8');
 
   assert.deepEqual(result.platforms, ['codex', 'cursor']);
   assert.equal(result.scope, 'project');
   assert.equal(result.language, 'zh');
-  assert.equal(result.openspecCli.status, 'present');
   assert.equal(result.results.length, 2);
   assert.match(skill, /OneSpec 工作流/);
   assert.match(cursorSkill, /OneSpec 工作流/);
   assert.doesNotMatch(skill, /Language for/);
-  assert.match(toolLog, /openspec:init/);
-  assert.match(toolLog, /--tools codex,cursor/);
 });
 
 test('CLI prints package version for version flags and command', async () => {
@@ -322,67 +285,37 @@ for (const platform of [
   });
 }
 
-test('buildOpenSpecInitCommand targets selected platforms and scope', async () => {
-  const command = buildOpenSpecInitCommand('/tmp/project', ['codex', 'cursor'], 'project', '/tmp/home');
-  const globalCommand = buildOpenSpecInitCommand(
-    '/tmp/project',
-    ['claude-code'],
-    'global',
-    '/tmp/home',
-  );
-
-  assert.equal(command.command, 'openspec');
-  assert.deepEqual(command.args, ['init', '/tmp/project', '--tools', 'codex,cursor']);
-  assert.deepEqual(globalCommand.args, ['init', '/tmp/home', '--tools', 'claude']);
-});
-
-test('initWorkspace installs missing OpenSpec CLI before initializing workspace', async () => {
+test('initWorkspace installs OneSpec skills for each selected platform and reports summary', async () => {
   const projectPath = await tmpProject();
-  const commands = [];
-  let openspecAvailable = false;
+  const initialized = [];
 
   const result = await initWorkspace(
     projectPath,
     {
       scope: 'global',
       language: 'en',
-      platforms: ['claude-code'],
+      platforms: ['claude-code', 'cursor'],
       yes: true,
     },
     {
-      homeDir: '/tmp/onespec-home',
-      commandExists: (command) => {
-        if (command !== 'openspec') {
-          return true;
-        }
-        return openspecAvailable;
+      initProject: async (_projectPath, options) => {
+        initialized.push(options.platform);
+        return {
+          platform: options.platform,
+          platformName: options.platform === 'claude-code' ? 'Claude Code' : 'Cursor',
+          skillPath: `/fake/${options.platform}`,
+          installedSkill: true,
+          installedSkills: BUNDLED_SKILLS,
+          skippedSkills: [],
+        };
       },
-      runCommand: (command, args, cwd) => {
-        commands.push({ command, args, cwd });
-        if (command === 'npm' || command === 'npm.cmd') {
-          openspecAvailable = true;
-        }
-      },
-      initProject: async (_projectPath, options) => ({
-        platform: options.platform,
-        platformName: 'Claude Code',
-        skillPath: `/fake/${options.platform}`,
-        installedSkill: true,
-        installedSkills: BUNDLED_SKILLS,
-        skippedSkills: [],
-      }),
     },
   );
 
-  assert.equal(result.openspecCli.status, 'installed');
-  assert.deepEqual(commands[0], {
-    command: 'npm',
-    args: ['install', '-g', '@fission-ai/openspec@latest'],
-    cwd: projectPath,
-  });
-  assert.deepEqual(commands[1], {
-    command: 'openspec',
-    args: ['init', '/tmp/onespec-home', '--tools', 'claude'],
-    cwd: projectPath,
-  });
+  assert.deepEqual(initialized, ['claude-code', 'cursor']);
+  assert.deepEqual(result.platforms, ['claude-code', 'cursor']);
+  assert.deepEqual(result.platformNames, ['Claude Code', 'Cursor']);
+  assert.equal(result.scope, 'global');
+  assert.equal(result.language, 'en');
+  assert.equal(result.results.length, 2);
 });

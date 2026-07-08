@@ -1,12 +1,8 @@
-import { execFileSync } from 'node:child_process';
 import { access } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 
 import { initProject, SUPPORTED_LANGUAGES } from './init.js';
 import { getGlobalSkillDir, getPlatform, getProjectSkillDir, PLATFORMS } from './platforms.js';
-
-const OPEN_SPEC_CLI_PACKAGE = '@fission-ai/openspec@latest';
 
 export const SUPPORTED_PLATFORM_IDS = Object.keys(PLATFORMS);
 
@@ -17,20 +13,6 @@ async function exists(filePath) {
   } catch {
     return false;
   }
-}
-
-export function commandExists(command) {
-  try {
-    const checker = process.platform === 'win32' ? 'where' : 'which';
-    execFileSync(checker, [command], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function getNpmExecutable(platform = process.platform) {
-  return platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
 export function parsePlatformList(values) {
@@ -82,36 +64,6 @@ export async function detectExistingOneSpecPlatforms(projectPath, scope, platfor
   return existing;
 }
 
-export function buildOpenSpecCliInstallCommand() {
-  return {
-    command: getNpmExecutable(),
-    args: ['install', '-g', OPEN_SPEC_CLI_PACKAGE],
-  };
-}
-
-export function buildOpenSpecInitCommand(targetPath, platformIds, scope, homeDir = os.homedir()) {
-  const resolvedPlatforms = parsePlatformList(platformIds);
-  if (resolvedPlatforms.length === 0) {
-    throw new Error('At least one platform must be selected.');
-  }
-
-  const openSpecToolIds = resolvedPlatforms.map((platformId) => getPlatform(platformId).openspecToolId);
-  return {
-    command: 'openspec',
-    args: ['init', scope === 'global' ? homeDir : targetPath, '--tools', openSpecToolIds.join(',')],
-    toolIds: openSpecToolIds,
-    targetPath: scope === 'global' ? homeDir : targetPath,
-  };
-}
-
-function runCommand(command, args, cwd = process.cwd()) {
-  execFileSync(command, args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
-}
-
 export async function initWorkspace(targetPath, options = {}, dependencies = {}) {
   const projectPath = path.resolve(targetPath);
   const scope = options.scope ?? 'project';
@@ -128,23 +80,7 @@ export async function initWorkspace(targetPath, options = {}, dependencies = {})
     );
   }
 
-  const commandChecker = dependencies.commandExists ?? commandExists;
-  const commandRunner = dependencies.runCommand ?? runCommand;
   const projectInitializer = dependencies.initProject ?? initProject;
-  const homeDir = dependencies.homeDir ?? os.homedir();
-
-  let openspecCliStatus = 'present';
-  if (!commandChecker('openspec')) {
-    const cliInstall = buildOpenSpecCliInstallCommand();
-    commandRunner(cliInstall.command, cliInstall.args, projectPath);
-    openspecCliStatus = 'installed';
-    if (!commandChecker('openspec')) {
-      throw new Error(`OpenSpec CLI installation completed but \`openspec\` is still unavailable.`);
-    }
-  }
-
-  const openSpecSetup = buildOpenSpecInitCommand(projectPath, selectedPlatformIds, scope, homeDir);
-  commandRunner(openSpecSetup.command, openSpecSetup.args, projectPath);
 
   const results = [];
   for (const platformId of selectedPlatformIds) {
@@ -165,14 +101,6 @@ export async function initWorkspace(targetPath, options = {}, dependencies = {})
     languageName: SUPPORTED_LANGUAGES[language].name,
     platforms: selectedPlatformIds,
     platformNames: selectedPlatformIds.map((platformId) => getPlatform(platformId).name),
-    openspecCli: {
-      status: openspecCliStatus,
-      package: OPEN_SPEC_CLI_PACKAGE,
-    },
-    openspec: {
-      targetPath: openSpecSetup.targetPath,
-      toolIds: openSpecSetup.toolIds,
-    },
     results,
   };
 }
