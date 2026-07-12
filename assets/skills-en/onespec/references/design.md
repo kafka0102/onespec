@@ -75,6 +75,8 @@ High-ambiguity flow:
 - Do not create OpenSpec artifacts before this explanation is complete.
 - Explicitly say that `brainstorming` will be used first.
 - Use `brainstorming` or `superpowers:brainstorming`, ask one question at a time, offer 2-3 approaches with trade-offs, and produce a confirmed design document.
+- After each brainstorming round converges, distill the confirmed decision into 1-3 lines in `design.md` under a `## Decision Rationale` section: each entry = decision + one-line WHY. `design.md` must be self-sufficient so the later execute phase does not need to revisit the brainstorming transcript.
+- After brainstorming concludes, state explicitly that "the design discussion has converged; `design.md` is the sole design input going forward"; later phases read only `design.md`'s decision rationale, not the brainstorming transcript.
 - After the user confirms the brainstorming result, backfill OpenSpec artifacts from that design plus relevant `docs/**` and `openspec/specs/**`. Do not re-ask questions already resolved.
 
 Visual-design trigger rules:

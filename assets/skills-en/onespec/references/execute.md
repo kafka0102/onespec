@@ -20,13 +20,23 @@ If a relevant change exists, you must continue with:
 
 Treat `recover` output as the current phase contract, not as reference information. Read at least `phase`, `next_skill`, `next_reference`, `next_gate`, and `allowed_actions` before deciding whether to continue execution-phase work.
 
-Before apply, read at least:
+apply-time reads split into two layers:
+
+Before plan generation (one-time, mandatory, do not skip):
 
 - `openspec/changes/<change-id>/proposal.md`
 - `openspec/changes/<change-id>/tasks.md`
 - `openspec/changes/<change-id>/design.md`, if present
 - relevant `openspec/specs/**`
 - relevant `docs/**`
+
+This is the only full read that translates the approved change into a Superpowers plan; once the plan is produced, artifacts revert to on-demand lookup.
+
+Per-task execution (on-demand, avoid redundant loading):
+
+- Mandatory minimum: the current incomplete-task slice from `tasks.md` + the `.onespec.yaml` recover contract + the matching Superpowers plan slice for that task.
+- Re-read a section of `proposal.md`/`design.md`/`specs/**`/`docs/**` only when: context was trimmed by compaction, the artifact changed since last read, the current task touches a design-sensitive area (API contract, data model, cross-module interface), or the plan conflicts with artifacts.
+- Do not re-read unchanged artifacts already in context.
 
 Default intent mapping:
 
@@ -161,6 +171,13 @@ Default execution path:
 - after every task, the controller reviews spec compliance and code quality before moving on
 - if the user explicitly rejects subagents, or the work is too tightly coupled for task-wise dispatch, explain why and switch to `executing-plans`
 - use `using-git-worktrees` when isolation is needed; do not bypass its safety checks manually
+
+Subagent dispatch contract:
+
+- When dispatching each subagent, the controller passes only three things: (a) the task description and its plan slice, (b) a reference to the `design.md` / spec section the task needs (let the subagent read the slice itself; do not inline full artifacts), (c) the acceptance criteria for the task.
+- Do not pass the entire plan, the brainstorming transcript, or other tasks' context.
+- After a subagent returns, the controller keeps only its conclusion summary (completion status, spec compliance, follow-ups) and discards the intermediate process.
+- `design.md` remains the single source of design truth; the plan and dispatches only reference its sections and never copy them, avoiding dual-source drift.
 
 After implementation, always sync OpenSpec artifacts:
 

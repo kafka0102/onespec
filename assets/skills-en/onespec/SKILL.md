@@ -61,6 +61,7 @@ Default intent mapping:
 - Superpowers owns high-ambiguity clarification, implementation planning, TDD, per-task review, and execution quality.
 - Do not ask the user to name the change. Generate a short kebab-case `change-id` from the task and append a suffix if needed.
 - Read the minimum necessary context: `openspec/config.yaml`, relevant `openspec/specs/**`, project entry docs, and current branch/worktree state.
+- Context boundary: once a phase's artifacts are written and its gate is passed, they are the authoritative input for downstream phases; the process that produced them (brainstorming transcript, ambiguity-scan reasoning, exploratory doc reads) is supplementary, not a derivation source. When the two conflict, artifacts win; process content must not override approved artifacts.
 - Only ask questions that can change the proposal, execution path, branch handling, or archive result.
 - If shared and phase-specific rules conflict, the current phase reference wins.
 - Each phase reference defines mandatory pause gates, such as the approval gate in `references/design.md` and the implementation-complete gate in `references/execute.md`. Before routing to the next phase, confirm the previous gate is complete; if it is not, refuse to continue and name the missing gate.

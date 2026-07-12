@@ -61,6 +61,7 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - Superpowers 负责高歧义需求澄清、实现计划、TDD、分任务 review 与工程执行质量。
 - 不要询问变更名称。根据任务自动生成简短短横线命名的 `change-id`，如冲突则追加数字。
 - 读取最少必要上下文：`openspec/config.yaml`、相关 `openspec/specs/**`、项目入口文档、当前分支和工作区状态。
+- 上下文边界：每个阶段的 artifacts 一旦写入且 gate 通过，即为下游阶段的权威输入；产生它们的过程（brainstorming 记录、歧义扫描推理、探索性文档读取）仅作辅助，不作推导依据。当两者冲突时以 artifacts 为准，过程内容不得覆盖已批准的 artifacts。
 - 只问会改变 proposal、执行路径、分支处理或归档结果的问题。
 - 当共同规则与阶段规则冲突时，以当前阶段 reference 的停止条件为准。
 - 每个阶段 reference 定义了强制暂停 gate（如 `references/execute.md` 的“实现完成 Gate”、`references/design.md` 的“批准 Gate”）。路由进入下一阶段前，必须确认上一阶段的 gate 已完成。如果 gate 未完成就试图进入下一阶段，必须拒绝并指出缺失步骤。

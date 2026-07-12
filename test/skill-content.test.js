@@ -61,6 +61,7 @@ test('onespec router loads phase references instead of child skills', async () =
     'propose',
     'apply',
     'review-closeout',
+    '上下文边界',
   ]) {
     expectIncludes(skill, expected);
   }
@@ -113,6 +114,7 @@ test('design reference documents proposal and approval routing guardrails', asyn
     '不要推荐再创建新的 worktree',
     '`低复杂度`：默认推荐原生 `OpenSpec apply`',
     '默认要求先按项目提交规范创建本地 commit，再创建临时分支 / worktree',
+    '决策依据',
   ]) {
     expectIncludes(reference, expected);
   }
@@ -166,6 +168,9 @@ test('execute reference documents apply, planning, and implementation guardrails
     '不在临时 worktree 时，不管当前目标分支叫 `main`、`master`、`develop`、`feature/*` 还是其他名称，都不要提示合并分支/删除 worktree',
     '用户未输入时默认停留在当前评审阶段',
     'openspec validate <change-id> --strict',
+    'apply 前读取分两层',
+    'subagent 派发契约',
+    '不传整个 plan',
   ]) {
     expectIncludes(reference, expected);
   }
@@ -383,6 +388,11 @@ test('English overlays exist for public skills and references', async () => {
     'skip the normal proposal approval gate, complexity check, implementation-path selection, and post-implementation archive choice',
   );
   expectIncludes(await readEnglishReference('fast.md'), 'run-actions <change-id> archive-only');
+  expectIncludes(await readEnglishSkill('onespec'), 'Context boundary');
+  expectIncludes(await readEnglishReference('design.md'), 'Decision Rationale');
+  expectIncludes(await readEnglishReference('execute.md'), 'apply-time reads split into two layers');
+  expectIncludes(await readEnglishReference('execute.md'), 'Subagent dispatch contract');
+  expectIncludes(await readEnglishReference('execute.md'), 'Do not pass the entire plan');
   assert.doesNotMatch(
     await readEnglishReference('archive.md'),
     /require one more explicit archive command/i,

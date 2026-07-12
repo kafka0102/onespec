@@ -20,13 +20,23 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 
 `recover` 的输出是当前阶段合同，不是参考信息。至少先读取 `phase`、`next_skill`、`next_reference`、`next_gate` 与 `allowed_actions`，再决定是否继续执行阶段动作。
 
-apply 前至少读取：
+apply 前读取分两层：
+
+plan 生成前（一次性，必读，不可省略）：
 
 - `openspec/changes/<change-id>/proposal.md`
 - `openspec/changes/<change-id>/tasks.md`
 - `openspec/changes/<change-id>/design.md`，如果存在
 - 相关 `openspec/specs/**`
 - 相关 `docs/**`
+
+这是把已批准 change 翻译成 Superpowers plan 的唯一全量读；产出 plan 后，artifacts 退为按需回查。
+
+逐 task 执行期（按需，避免重复加载）：
+
+- 强制最小集：`tasks.md` 当前未完成 task 切片 + `.onespec.yaml` recover 合同 + 对应 Superpowers plan 的该 task 切片。
+- `proposal.md`/`design.md`/`specs/**`/`docs/**` 仅在以下情况回查对应段落：上下文已被 compaction 裁剪、该 artifact 自上次读取后被修改、当前 task 触及设计敏感区（改 API 契约、改数据模型、跨模块接口）、或 plan 与 artifacts 冲突。
+- 不重读已在上下文中的未变更 artifacts。
 
 默认意图映射：
 
@@ -161,6 +171,13 @@ git -C "$implementation_workspace_path" status --short
 - controller 在每个任务后做规格符合性评审和代码质量评审，再进入下一个任务。
 - 如果用户明确要求不用 subagent，或任务强耦合到不适合逐 task 派发，说明原因后改用 `executing-plans`。
 - 需要隔离时使用 `using-git-worktrees`，不要手写绕过它的安全检查。
+
+subagent 派发契约：
+
+- controller 派发每个 subagent 时只传三件：(a) 该 task 描述与对应 plan 切片，(b) 该 task 需要的 `design.md` / spec 段落引用（让 subagent 自行读取切片，不内联整份 artifacts），(c) 当前 task 的验收标准。
+- 不传整个 plan、不传 brainstorming 转录、不传其他 task 的上下文。
+- subagent 返回后，controller 只保留其结论摘要（完成情况、规格符合性、待办），丢弃中间过程。
+- `design.md` 始终是设计真相源；plan 与派发只引用其段落，不复制为副本，避免双真相源漂移。
 
 实现完成后必须回填 OpenSpec artifacts：
 

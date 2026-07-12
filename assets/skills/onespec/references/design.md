@@ -75,6 +75,8 @@ ONESPEC_ENV="${ONESPEC_ENV:-$(find . "$HOME"/.codex "$HOME"/.claude "$HOME"/.cur
 - 在完成这次说明前，不要创建任何 OpenSpec artifact。
 - 明确说明将先进入 `brainstorming`，再写 OpenSpec artifacts。
 - 使用 `brainstorming` 或 `superpowers:brainstorming`，一次只问一个问题，提出 2-3 个可行方案并说明 trade-off，形成已确认的设计文档。
+- 每轮 brainstorming 收敛后，立即把确认的决策以 1-3 行写进 `design.md` 的 `## 决策依据` 段：每条 = 决策 + 一句 WHY。`design.md` 必须自洽，使后续 execute 阶段无需回溯 brainstorming 原文。
+- brainstorming 收尾后明确标注"设计讨论已收敛，`design.md` 为后续唯一设计输入"；后续阶段只读 `design.md` 的决策依据，不回溯 brainstorming 转录。
 - Brainstorming 文档被用户确认后，以该文档、相关 `docs/**` 与相关 `openspec/specs/**` 为输入，回填 OpenSpec artifacts。不要重复追问已确认的问题。
 
 视觉设计触发规则：
